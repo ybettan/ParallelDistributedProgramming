@@ -1,13 +1,21 @@
 package ex1;
 
+import java.util.ArrayList;
+
 public class ParallelGameOfLife implements GameOfLife {
 
 	public boolean[][][] invoke(boolean[][] initalField, int hSplit, int vSplit,
 			int generations) {
 
-		boolean[][][] x=new boolean[2][][];	
+	    boolean[][][] x=new boolean[2][][];	
+        ArrayList<ArrayList<ArrayList<Boolean>>> field;
+
+        // give each thread a parthial-copy of the initalField
+        field = divideField(initalField, hSplit, vSplit);
+
 		x[0] = get_gen(initalField,hSplit,vSplit, generations-1);
 		x[1] = get_gen(initalField,hSplit,vSplit, generations);
+        
 		return x;
 	}
 
@@ -59,4 +67,57 @@ public class ParallelGameOfLife implements GameOfLife {
 		}
 		return counter;
 	}
+
+    // this function create an ArrayList for all threads
+    // each object in the ArrayList is a 2D ArrayList (a part of the field)
+    // we cannot use an array of 2D ArraysLists cause arrays don't hold
+    //                                                       generic types
+    private ArrayList<ArrayList<ArrayList<Boolean>>> 
+    divideField(boolean[][] initalField, int hSplit, int vSplit) {
+        
+        int numOfThread = hSplit * vSplit;
+
+        // create the ArrayList
+        ArrayList<ArrayList<ArrayList<Boolean>>> fields = new ArrayList<>();
+
+        // for each thread copy its relevant part of initalField
+        for (int i = 0 ; i < numOfThread ; i++) 
+            fields.add(copyFromOrigin(initalField, i, hSplit, vSplit));
+        
+        return fields;
+    }
+
+    private ArrayList<ArrayList<Boolean>> 
+    copyFromOrigin(boolean[][] initalField, int threadIndex, int hSplit, 
+            int vSplit) {
+
+        int hSplitSize = initalField[0].length / hSplit; 
+        int vSplitSize = initalField.length / vSplit;
+        
+        int row = (threadIndex / hSplit ) * vSplitSize; 
+        int col = (threadIndex % hSplit) * hSplitSize; 
+
+        // if the field didn't split equally so the remider is for the last one
+        int rowReminder = initalField.length % vSplit;
+        if (rowReminder != 0 && row / vSplitSize == vSplit-1) {
+            vSplitSize += rowReminder;
+        }
+
+        // if the field didn't split equally so the remider is for the last one
+        int colReminder = initalField[0].length % hSplit;
+        if (colReminder != 0 && threadIndex % hSplit == hSplit-1) {
+            hSplitSize += colReminder;
+        }
+
+        ArrayList<ArrayList<Boolean>> field = new ArrayList<>();
+        for (int i = 0 ; i < vSplitSize ; i++) {
+            field.add(new ArrayList<Boolean>());
+            for (int j = 0 ; j < hSplitSize ; j++) {
+                field.get(i).add(initalField[row + i][col + j]);
+            }
+        }
+        return field;
+    }
 }
+
+
