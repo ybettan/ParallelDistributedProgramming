@@ -5,14 +5,18 @@ import java.util.ArrayList;
 
 
 
-class SyncedQueue {
+public class SyncedQueue {
     
     // head --> first index
     // tail --> last index
     private ArrayList<Cell> queue;
 
-    synchronized Cell dequeue() {
-       while (queue.isEmpty()) {
+    public SyncedQueue() {
+        queue = new ArrayList<Cell>();
+    }
+
+    public synchronized Cell dequeue() {
+       while (queue.size() == 0) {
            try {
                wait();            
            } catch (InterruptedException e) {
@@ -25,13 +29,8 @@ class SyncedQueue {
        return head;
     }
 
-    synchronized void enqueue(Cell c) {
+    public synchronized void enqueue(Cell c) {
         queue.add(c);
         notify();
     }
-
-    private boolean isEmpty() {
-        return queue.size() == 0;
-    }
-
 }

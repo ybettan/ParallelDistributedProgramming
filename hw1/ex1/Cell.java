@@ -5,7 +5,8 @@ package ex1;
 
 public class Cell {
 
-    boolean isAlive;
+    public boolean isAlive;
+
     private int gen;
     private int checkedNeighbors;
     private int aliveNeighbors;
@@ -14,7 +15,7 @@ public class Cell {
     // a copy of the old version for reading 
     private Cell oldVersion;
 
-    Cell(boolean isAlive, int maxNeighbors) {
+    public Cell(boolean isAlive, int maxNeighbors) {
         this.isAlive = isAlive;
         gen = 0;
         checkedNeighbors = 0;
@@ -24,7 +25,7 @@ public class Cell {
     }
 
     // given a neighbor cell we can add it to the calculation for our cell
-    void addNeighbor(Cell c) {
+    public void addNeighbor(Cell c) {
 
         //FIXME: for debugging - remove when done
         if (gen != c.gen)
