@@ -12,15 +12,18 @@ public class Cell {
     private boolean wasUpdated;
     // not all cells have 8 neighbors
     private final int MAX_NEIGHBORS;        
+    private final int GLOBAL_I, GLOBAL_J;
 
 
-    public Cell(boolean isAlive, int maxNeighbors) {
+    public Cell(boolean isAlive, int maxNeighbors, int globalI, int globalJ) {
         this.isAlive = isAlive;
         gen = 0;
         checkedNeighbors = 0;
         aliveNeighbors = 0;
         wasUpdated = false;
         this.MAX_NEIGHBORS = maxNeighbors;
+        this.GLOBAL_I = globalI;
+        this.GLOBAL_J = globalJ;
     }
 
     public Cell(Cell ref) {
@@ -30,6 +33,16 @@ public class Cell {
         this.aliveNeighbors = ref.aliveNeighbors;
         this.wasUpdated = ref.wasUpdated;
         this.MAX_NEIGHBORS = ref.MAX_NEIGHBORS;
+        this.GLOBAL_I = ref.GLOBAL_I;
+        this.GLOBAL_J = ref.GLOBAL_J;
+    }
+    
+    public void increaseGen() {
+        gen++;
+    }
+
+    public boolean needOneMoreNeighbor() {
+        return checkedNeighbors == MAX_NEIGHBORS - 1;
     }
 
     public boolean isAlive() {
@@ -44,6 +57,19 @@ public class Cell {
 
     public int getGen() {
         return gen;
+    }
+
+    public int getGlobalI() {
+        return GLOBAL_I;
+    }
+
+    public int getGlobalJ() {
+        return GLOBAL_J;
+    }
+
+    public void takeDataFrom(Cell c) {
+        checkedNeighbors = c.checkedNeighbors;
+        aliveNeighbors = c.aliveNeighbors;
     }
 
     // given a neighbor cell we can add it to the calculation for our cell
