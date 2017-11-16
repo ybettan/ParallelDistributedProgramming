@@ -113,6 +113,27 @@ class field_stages {
                     {false}
             }
     };
+    boolean[][][] hardToSplit = {
+            {
+                    {false, false, false, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, false, false, false, false}
+            }, {
+                    {false, false, false, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, false, false, false, false}
+            }, {
+                    {false, false, false, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, true, true, false, false},
+                    {false, false, false, false, false}
+            }
+    };
     field_stages() { }
 }
 public class ParallelGameOfLifeTest {
@@ -176,7 +197,25 @@ public class ParallelGameOfLifeTest {
 
         System.out.print("ParallelGameOfLifeTest...");
         field_stages fs = new field_stages();
-        ParallelGameOfLifeTest.test(4,4, fs.all_dead );
+        for (int vSplit = 1; vSplit < 6; vSplit++){
+            for (int hSplit = 1; hSplit < 6; hSplit++) {
+                if ((vSplit < fs.all_dead.length) && (hSplit < fs.all_dead[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.all_dead );
+                if ((vSplit < fs.stuckInTheMiddle.length) && (hSplit < fs.stuckInTheMiddle[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.stuckInTheMiddle );
+                if ((vSplit < fs.hardToSplit.length) && (hSplit < fs.hardToSplit[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.hardToSplit );
+                if ((vSplit < fs.row1.length) && (hSplit < fs.row1[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.row1 );
+                if ((vSplit < fs.row2.length) && (hSplit < fs.row2[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.row2 );
+                if ((vSplit < fs.column1.length) && (hSplit < fs.column1[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.column1 );
+                if ((vSplit < fs.column2.length) && (hSplit < fs.column2[0].length))
+                    ParallelGameOfLifeTest.test(vSplit,hSplit, fs.column2 );
+            }
+        }
+
 
     }
 }
