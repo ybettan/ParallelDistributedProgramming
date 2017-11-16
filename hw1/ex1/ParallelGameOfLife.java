@@ -7,7 +7,29 @@ public class ParallelGameOfLife implements GameOfLife {
 
 	final int AMOUNT_OF_RESULTS = 2;
 	Field [][] threadLocations;
-	int hSplit, vSplit;
+	int hSplit;
+
+	public Field[][] getThreadLocations() {
+		return threadLocations;
+	}
+
+	public int gethSplit() {
+		return hSplit;
+	}
+
+	public void sethSplit(int hSplit) {
+		this.hSplit = hSplit;
+	}
+
+	public int getvSplit() {
+		return vSplit;
+	}
+
+	public void setvSplit(int vSplit) {
+		this.vSplit = vSplit;
+	}
+
+	int vSplit;
 
 	public boolean[][][] invoke(boolean[][] initalField, int hSplit, int vSplit,
 			int generations) {
@@ -32,7 +54,7 @@ public class ParallelGameOfLife implements GameOfLife {
 	 * (in fact it is faster if each thread writes his own results to the correct location)
 	 * Param initalField - the initial state of the game.
 	 */
-	private boolean[][][] allocateGofResult(boolean[][] initalField) {
+	public boolean[][][] allocateGofResult(boolean[][] initalField) {
 		boolean[][][] gofResult = new boolean[AMOUNT_OF_RESULTS][][];
 		for (int i = 0; i < AMOUNT_OF_RESULTS; i++){
 			gofResult[i] = new boolean[initalField.length][];
@@ -50,7 +72,7 @@ public class ParallelGameOfLife implements GameOfLife {
 	 * 		 generations - the amount of generations that need to be computed.
 	 * return Field[vSplit][hSplit].
 	 */
-	private void allocateAndCreateFields(boolean[][] initialField, boolean[][][] gofResult, int generations) {
+	public void allocateAndCreateFields(boolean[][] initialField, boolean[][][] gofResult, int generations) {
 		int minX , maxX = 0, minY = 0, maxY = 0;
 		int intervalY = initialField.length / vSplit;
 		int intervalX = initialField[0].length / hSplit;
@@ -59,11 +81,14 @@ public class ParallelGameOfLife implements GameOfLife {
 		for ( int row = 0; row < vSplit; row++) {
 			threadLocations[row] = new Field[hSplit];
 			minX = 0;
+			maxX = 0;
 			maxY =  (row != vSplit-1) ? maxY + intervalY : initialField.length;
 			for (int col = 0; col < hSplit; col++) {
-				maxX += (col != hSplit - 1) ? maxX + intervalX : initialField[0].length;
-				threadLocations[row][col] = new Field(initialField, minX, maxX, minY, maxY, generations, gofResult);
+				maxX = (col != hSplit - 1) ? maxX + intervalX : initialField[0].length;
+				threadLocations[row][col] = new Field(initialField, minY, maxY-1, minX, maxX-1, generations, gofResult);
+				minX = maxX;
 			}
+			minY = maxY;
 		}
 	}
 
@@ -71,7 +96,7 @@ public class ParallelGameOfLife implements GameOfLife {
 	 * Use to notify each Field which threads are his neighbors for communicating and applying the producer consumer
 	 * algorithm.
 	 */
-	private void applyNeighbors(){
+	public void applyNeighbors(){
 		Field up, upRight, right, downRight, down, downLeft, left, upLeft;
 		for (int row = 0; row < vSplit; row++) {
 			for (int col = 0; col < hSplit; col++){
@@ -104,7 +129,7 @@ public class ParallelGameOfLife implements GameOfLife {
 	/*
 	 * startGOF will create a thread for each field, start the thread, and wait for all the threads to finnish.
 	 */
-	private void startGOF(){
+	public void startGOF(){
 		ArrayList<Thread> threads = new ArrayList<Thread>(hSplit*vSplit);
 		for (int row = 0; row < vSplit; row++) {
 			for (int col = 0; col < hSplit; col++) {
