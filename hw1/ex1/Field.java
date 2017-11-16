@@ -10,23 +10,27 @@ public class Field implements Runnable {
     private int numOfDoneCells;
     private int generations;
     private Neighbors neighbors; 
+    private boolean[][][] result; 
     private final int CORNER_MAX_NEIGHBORS = 3;
     private final int SIDE_MAX_NEIGHBORS = 5;
     private final int INTERNAL_MAX_NEIGHBORS = 8;
     
 
     public Field(boolean[][] initalField, int minI, int maxI, int minJ, 
-            int maxJ, int generations) {
+            int maxJ, int generations, boolean[][][] result) {
         this.field = createPartialCopy(initalField, minI, maxI, minJ, maxJ);
         queue = new SyncedQueue();
         numOfDoneCells = 0;
         this.generations = generations;
+        this.result = result;
     }
     
+    /* receive as input all Field neighbors, Field is the owner of this data */
     public void setNeighbors(Neighbors neighbors) {
         this.neighbors = neighbors;
     }
 
+    /* get a pointer to the queue for other Fields to enqueue data to it */
     public SyncedQueue getQueue() {
         return queue;
     }
@@ -36,38 +40,119 @@ public class Field implements Runnable {
         communicationPart();        
     } 
 
+//-----------------------------------------------------------------------------
+//                              private methods
+//-----------------------------------------------------------------------------
+
+    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, int maxI, 
+            int minJ, int maxJ) {
+        int numOfRows = maxJ - minJ + 1;
+        int numOfCols = maxI - minI + 1;
+        int buttomBoundry = initalField.length;
+        int rightBoundry = initalField[0].length;
+        Cell3D[][] res = new Cell3D[numOfRows][];
+        for (int i = minI ; i <= maxI ; i++) {
+            res[i] = new Cell3D[numOfCols];
+            for (int j = minJ ; j <= maxJ ; j++) {
+                boolean isAlive = initalField[i][j];
+                int maxNeighbors;
+                if (isCorner(initalField, i, j)) {
+                    maxNeighbors = CORNER_MAX_NEIGHBORS;
+                } else if (isSideButNotCorner(initalField, i, j)) {
+                    maxNeighbors = SIDE_MAX_NEIGHBORS;
+                } else {
+                    maxNeighbors = INTERNAL_MAX_NEIGHBORS;
+                } 
+                res[i-minI][j-minJ] = new Cell3D(isAlive, maxNeighbors, i, j);
+            }
+        }
+        return res;
+    }
+
+    private boolean isCorner(boolean[][] anyField, int i, int j) {
+        boolean res = false;
+
+        if (isUpRightCorner(anyField, i, j)) {
+            res = true;
+        }
+        if (isDownRightCorner(anyField, i, j)) {
+            res = true;
+        }
+        if (isDownLeftCorner(anyField, i, j)) {
+            res = true;
+        }
+        if (isUpLeftCorner(anyField, i, j)) {
+            res = true;
+        }
+        return res;
+    }
+
+    private boolean isUpRightCorner(boolean[][] anyField, int i, int j) {
+        int maxCol = anyField[0].length-1;
+        int maxRow = anyField.length-1;
+        return (i == 0 && j == maxCol); 
+    }
+
+    private boolean isDownRightCorner(boolean[][] anyField, int i, int j) {
+        int maxCol = anyField[0].length-1;
+        int maxRow = anyField.length-1;
+        return (i == maxRow && j == maxCol); 
+    }
+
+    private boolean isDownLeftCorner(boolean[][] anyField, int i, int j) {
+        int maxCol = anyField[0].length-1;
+        int maxRow = anyField.length-1;
+        return (i == maxRow && j == 0); 
+    }
+
+    private boolean isUpLeftCorner(boolean[][] anyField, int i, int j) {
+        int maxCol = anyField[0].length-1;
+        int maxRow = anyField.length-1;
+        return (i == 0 && j == 0); 
+    }
+
+    private boolean isSideButNotCorner(boolean[][] anyField, int i, int j) {
+        boolean res = false;
+
+        if (isUpSideButNotCorner(anyField, i, )) {
+            res = true;
+        }
+        if (isRightSideButNotCorner(anyField, i, )) {
+            res = true;
+        }
+        if (isDownSideButNotCorner(anyField, i, )) {
+            res = true;
+        }
+        if (isLeftSideButNotCorner(anyField, i, )) {
+            res = true;
+        }
+        return res;
+    }
+
+    private boolean isUpSideButNotCorner(boolean[][] anyField, int i, int j) {
+        return (i == 0 && !isCorner(anyField, i, j);
+    }
+
+    private boolean isRightSideButNotCorner(boolean[][] anyField, int i, int j) {
+        int maxCol = anyField[0].length-1;
+        return (j == maxCol && !isCorner(anyField, i, j);
+    }
+
+    private boolean isDownSideButNotCorner(boolean[][] anyField, int i, int j) {
+        int maxRow = anyField.length-1;
+        return (i == maxRow && !isCorner(anyField, i, j);
+    }
+
+    private boolean isLeftSideButNotCorner(boolean[][] anyField, int i, int j) {
+        return (j == 0 && !isCorner(anyField, i, j);
+    }
+
     /* for a IxJ field, autonomus calculation can be done on (I-2)x(J-2) field */
     private void autonomusPart() {
         autonumusCornerPart();
         autonumusSidePart();
         autonumusInternalPart();
     }
-
-    private void communicationPart() {
-
-        int maxCol = field[0].length-1;
-        int maxRow = field.length-1;
-
-        /* while not all cells have arrived to required generation */
-        while (numOfDoneCells < field.length * field[0].length) {
-           Cell cellFromOtherThread = queue.dequeue();
-
-           /* find all the Cell3D that needs that cellFromOtherThread */ 
-           ArrayList<Cell3D> destCells3D = new ArrayList<>();
-           int globalIFromOtherThread = cellFromOtherThread.getGlobalI();
-           int globalJFromOtherThread = cellFromOtherThread.getGlobalJ();
-           
-           /* cellFromOtherThread come from up neighbor thread */
-           if (globalIFromOtherThread < field[0][0].getCurrentCopy().getGlobalI() &&
-               globalJFromOtherThread) {
-               
-           }
-
-
-           recursiveAddNeighbors(destCells3D, cellFromOtherThread);
-        }
-    }        
-
 
     private void autonumusCornerPart() {
 
@@ -182,6 +267,33 @@ public class Field implements Runnable {
         }
     }
 
+    /* update all relevant neighbors recursively for each Cell in queue */
+    private void communicationPart() {
+
+        int maxCol = field[0].length-1;
+        int maxRow = field.length-1;
+
+        /* while not all cells have arrived to required generation */
+        while (numOfDoneCells < field.length * field[0].length) {
+           Cell cellFromOtherThread = queue.dequeue();
+
+           /* find all the Cell3D that needs that cellFromOtherThread */ 
+           ArrayList<Cell3D> destCells3D = new ArrayList<>();
+           int globalIFromOtherThread = cellFromOtherThread.getGlobalI();
+           int globalJFromOtherThread = cellFromOtherThread.getGlobalJ();
+           
+           /* cellFromOtherThread come from up right neighbor thread */
+           if () {
+               
+           }
+
+
+           recursiveAddNeighbors(destCells3D, cellFromOtherThread);
+        }
+    }        
+
+
+
     private void sendToNeighbors(Cell c, int i, int j) {
         Field neighbor;
         int maxCol = field[0].length-1;
@@ -236,58 +348,6 @@ public class Field implements Runnable {
          }
     }
 
-    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, int maxI, 
-            int minJ, int maxJ) {
-        int numOfRows = maxJ - minJ + 1;
-        int numOfCols = maxI - minI + 1;
-        int buttomBoundry = initalField.length;
-        int rightBoundry = initalField[0].length;
-        Cell3D[][] res = new Cell3D[numOfRows][];
-        for (int i = minI ; i <= maxI ; i++) {
-            res[i] = new Cell3D[numOfCols];
-            for (int j = minJ ; j <= maxJ ; j++) {
-                boolean isAlive = initalField[i][j];
-                int maxNeighbors;
-                if (isCorner(initalField, i, j)) {
-                    maxNeighbors = CORNER_MAX_NEIGHBORS;
-                } else if (isSide(initalField, i, j)) {
-                    maxNeighbors = SIDE_MAX_NEIGHBORS;
-                } else {
-                    maxNeighbors = INTERNAL_MAX_NEIGHBORS;
-                } 
-                res[i-minI][j-minJ] = new Cell3D(isAlive, maxNeighbors, i, j);
-            }
-        }
-        return res;
-    }
-
-    private boolean isCorner(boolean[][] initalField, int i, int j) {
-        boolean res = false;
-        if (i == 0 && j == 0) {
-            res = true;
-        }
-        if (i == 0 && j == initalField[0].length - 1) {
-            res = true;
-        }
-        if (i == initalField.length - 1 && j == 0) {
-            res = true;
-        }
-        if (i == initalField.length - 1 && j == initalField[0].length - 1) {
-            res = true;
-        }
-        return res;
-    }
-
-    private boolean isSide(boolean[][] initalField, int i, int j) {
-        boolean res = false;
-        if ( (i == 0 || i == initalField.length) && !isCorner(initalField,i,j)) {
-            res = true;
-        }
-        if ( (j == 0 || i == initalField[0].length) && !isCorner(initalField,i,j)) {
-            res = true;
-        }
-        return res;
-    }
 }
 
 
