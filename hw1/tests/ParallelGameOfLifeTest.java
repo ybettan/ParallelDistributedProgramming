@@ -182,7 +182,7 @@ public class ParallelGameOfLifeTest {
             assert (n.getDownRight() == f[2][2]);
         }
 
-        /* pGOF.startGOF();
+        pGOF.startGOF();
         for (int i = 0; i < fieldGenerations[0].length; i++){
             for (int j = 0; j < fieldGenerations[0][0].length; j++){
                 assert (res[0][i][j] == fieldGenerations[maxGeneration-1][i][j]);
@@ -190,7 +190,7 @@ public class ParallelGameOfLifeTest {
             }
 
         }
-        */
+
         return true;
     }
     public static void main(String args[]) {

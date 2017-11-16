@@ -159,122 +159,84 @@ public class Field implements Runnable {
     }
 
     private void autonomusPart() {
-        autonumusCornerPart();
-        autonumusSidePart();
-        autonumusInternalPart();
+        sendMargins();
+        buildPyramid(0, field.length, 0, field[0].length, 0);
     }
 
-    private void autonumusCornerPart() {
-
-        int maxCol = field[0].length-1;
-        int maxRow = field.length-1;
-
-
-        /* top left corner */
-        sendToNeighbors(field[0][0].getCurrentCopy(), 0, 0);
-        field[0][0].addNeighbor(field[0][1].getCurrentCopy());                 
-        field[0][0].addNeighbor(field[1][1].getCurrentCopy());                 
-        field[0][0].addNeighbor(field[1][0].getCurrentCopy());                 
-
-        /* top right corner */
-        sendToNeighbors(field[0][maxCol].getCurrentCopy(), 0, maxCol);
-        field[0][maxCol].addNeighbor(field[0][maxCol-1].getCurrentCopy());                 
-        field[0][maxCol].addNeighbor(field[1][maxCol-1].getCurrentCopy());                 
-        field[0][maxCol].addNeighbor(field[1][maxCol].getCurrentCopy());                 
-
-        /* buttom right corner */
-        sendToNeighbors(field[maxRow][maxCol].getCurrentCopy(), maxRow, maxCol);
-        field[maxRow][maxCol].addNeighbor(field[maxRow][maxCol-1].getCurrentCopy());
-        field[maxRow][maxCol].addNeighbor(field[maxRow-1][maxCol-1].getCurrentCopy());
-        field[maxRow][maxCol].addNeighbor(field[maxRow-1][maxCol].getCurrentCopy());
-
-        /* buttom left corner */
-        sendToNeighbors(field[maxRow][0].getCurrentCopy(), maxRow, 0);
-        field[maxRow][0].addNeighbor(field[maxRow-1][0].getCurrentCopy());                 
-        field[maxRow][0].addNeighbor(field[maxRow-1][1].getCurrentCopy());                 
-        field[maxRow][0].addNeighbor(field[maxRow][1].getCurrentCopy());                 
+    /*
+     * send the margin cells to the neighbors.
+     */
+    private void sendMargins() {
+        for (int row=0; row < field.length; row++) {
+            for (int col=0; col < field[0].length; col++){
+                if ((row == 0) || (row==field.length-1) || (col==0) || (col==field[0].length-1))
+                    sendToNeighbors(field[row][col].getCurrentCopy(),row,col);
+            }
+        }
     }
-
-    private void autonumusSidePart() {
-
-        int maxCol = field[0].length-1;
-        int maxRow = field.length-1;
-
-        /* upSide */
-        for (int i = 1 ; i < maxCol ; i++) {
-            sendToNeighbors(field[0][i].getCurrentCopy(), 0, i);
-            field[0][i].addNeighbor(field[0][i-1].getCurrentCopy());
-            field[0][i].addNeighbor(field[1][i-1].getCurrentCopy());
-            field[0][i].addNeighbor(field[1][i].getCurrentCopy());
-            field[0][i].addNeighbor(field[1][i+1].getCurrentCopy());
-            field[0][i].addNeighbor(field[0][i+1].getCurrentCopy());
+    /*
+     * build a recursive pyramid of generations. each time the function will compute the generation for the given base
+     * which the dimensions limited by: rows start at min row and end at max row.
+     *                                  columns start at min col and end at max col.
+     * next the the function will calculate the new dimensions for the next base and call it self again.
+     * each time the generation that is passed should increase by 1.
+     * the recursion will stop if:
+     *          1) the base is to small to compute.
+     *          2) if the max generation was calculated.
+     *          3) if no cell advanced a generation during
+     */
+    private void buildPyramid(int minRow, int maxRow, int minCol, int maxCol, int currentGeneration) {
+        // stopping conditions.
+        if (currentGeneration == generations) {
+            numOfDoneCells = (maxCol-minCol) * (maxRow-minRow);
+            return;
         }
+        if ((minRow>=maxRow) && (minCol>=maxCol))
+            return;
+        // limits for next iteration.
+        int nextMinRow = -1, nextMaxRow = -1, nextMinCol = -1, nextMaxCol = -1;
 
-        /* rightSide */
-        for (int i = 1 ; i < maxRow ; i++) {
-            sendToNeighbors(field[i][maxCol].getCurrentCopy(), i, maxCol);
-            field[i][maxCol].addNeighbor(field[i-1][maxCol].getCurrentCopy());
-            field[i][maxCol].addNeighbor(field[i-1][maxCol-1].getCurrentCopy());
-            field[i][maxCol].addNeighbor(field[i][maxCol-1].getCurrentCopy());
-            field[i][maxCol].addNeighbor(field[i+1][maxCol-1].getCurrentCopy());
-            field[i][maxCol].addNeighbor(field[i+1][maxCol].getCurrentCopy());
-        }
-
-        /* downSide */
-        for (int i = 1 ; i < maxCol ; i++) {
-            sendToNeighbors(field[maxRow][i].getCurrentCopy(), maxRow, i);
-            field[maxRow][i].addNeighbor(field[maxRow][i-1].getCurrentCopy());
-            field[maxRow][i].addNeighbor(field[maxRow-1][i-1].getCurrentCopy());
-            field[maxRow][i].addNeighbor(field[maxRow-1][i].getCurrentCopy());
-            field[maxRow][i].addNeighbor(field[maxRow-1][i+1].getCurrentCopy());
-            field[maxRow][i].addNeighbor(field[maxRow][i+1].getCurrentCopy());
-        }
-
-        /* leftSide */
-        for (int i = 1 ; i < maxRow ; i++) {
-            sendToNeighbors(field[i][0].getCurrentCopy(), i, 0);
-            field[i][0].addNeighbor(field[i-1][0].getCurrentCopy());
-            field[i][0].addNeighbor(field[i-1][1].getCurrentCopy());
-            field[i][0].addNeighbor(field[i][1].getCurrentCopy());
-            field[i][0].addNeighbor(field[i+1][1].getCurrentCopy());
-            field[i][0].addNeighbor(field[i+1][0].getCurrentCopy());
-        }
-
-    }
-    
-    private void autonumusInternalPart() {
-
-        /* now create the piramide */
-        int iterations;
-        if (field.length < field[0].length) {
-            iterations = field.length;
-        } else {
-            iterations = field[0].length;
-        }
-        iterations = iterations/2;
-        /* each time work on a smaller rektangle */
-        for (int k = 1 ; k <= iterations ; k++) {
-            for (int i = k ; i < field.length-k ; i++) {
-                for (int j = k ; j < field[0].length-k ; j++) {
-                    field[i][j].addNeighbor(field[i-1][j].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i-1][j+1].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i][j+1].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i+1][j+1].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i+1][j].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i+1][j-1].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i][j-1].getCurrentCopy());                 
-                    field[i][j].addNeighbor(field[i-1][j-1].getCurrentCopy());                 
-
-                    /* when numOfDoneCells reach board size then the thread 
-                     * has finish its calculations */
-                    if (field[i][j].getCurrentCopy().getGen() == generations) {
-                        numOfDoneCells++;
-                    }
-                    /* this is done only to turn off the flag */
-                    field[i][j].wasUpdated();                 
+        for (int row=minRow; row < maxRow; row++){
+            for (int col=minCol; col < maxCol; col++) {
+                // look up:
+                if (row > minRow) {
+                    field[row][col].addNeighbor(field[row-1][col].getByGen(currentGeneration));
+                    // look up and left
+                    if (col>minCol)
+                        field[row][col].addNeighbor(field[row-1][col-1].getByGen(currentGeneration));
+                    // look up and right
+                    if (col < maxCol-1)
+                        field[row][col].addNeighbor(field[row-1][col+1].getByGen(currentGeneration));
+                }
+                // look down
+                if (row < maxRow) {
+                    field[row][col].addNeighbor(field[row+1][col].getByGen(currentGeneration));
+                    // look down and right
+                    if (col < maxCol-1)
+                        field[row][col].addNeighbor(field[row+1][col+1].getByGen(currentGeneration));
+                    // look down and left
+                    if (col>minCol)
+                        field[row][col].addNeighbor(field[row+1][col-1].getByGen(currentGeneration));
+                }
+                // look left
+                if (col>minCol)
+                    field[row][col].addNeighbor(field[row][col-1].getByGen(currentGeneration));
+                // look right
+                if (col < maxCol)
+                    field[row][col].addNeighbor(field[row][col+1].getByGen(currentGeneration));
+                // find the first cell that was updated. he is the top left corner of the pyramid above.
+                if ((nextMinCol == -1) && (field[row][col].getByGen(currentGeneration+1) != null)) {
+                    nextMinCol = col;
+                    nextMinRow = row;
+                }
+                // find the last cell that was updated. he is the bottom left corner of the pyramid above.
+                if (field[row][col].getByGen(currentGeneration+1) != null) {
+                    nextMaxCol = col;
+                    nextMaxRow = row;
                 }
             }
         }
+        buildPyramid(nextMinRow, nextMaxRow, nextMinCol, nextMaxCol, currentGeneration+1);
     }
 
     /* update all relevant neighbors recursively for each Cell in queue */
@@ -288,9 +250,7 @@ public class Field implements Runnable {
            Cell cellFromOtherThread = queue.dequeue();
            recursiveAddNeighbors(cellFromOtherThread);
         }
-    }        
-
-
+    }
 
     private void sendToNeighbors(Cell c, int i, int j) {
         Field neighbor;
@@ -300,32 +260,32 @@ public class Field implements Runnable {
         /* up neighbor case*/
         neighbor = neighbors.getUp();
         if (neighbor != null && i == 0) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* up right neighbor case*/
         neighbor = neighbors.getUpRight();
         if (neighbor != null && i == 0 && j == maxCol) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* right neighbor case*/
         neighbor = neighbors.getRight();
         if (neighbor != null &&  j == maxCol) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* down right neighbor case*/
         neighbor = neighbors.getDownRight();
         if (neighbor != null &&  i == maxRow && j == maxCol) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* down neighbor case*/
         neighbor = neighbors.getDown();
         if (neighbor != null &&  i == maxRow) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* down left neighbor case*/
         neighbor = neighbors.getDownLeft();
         if (neighbor != null &&  i == maxRow && j == 0) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
         /* left neighbor case*/
         neighbor = neighbors.getLeft();
@@ -335,7 +295,7 @@ public class Field implements Runnable {
         /* up left neighbor case*/
         neighbor = neighbors.getUpLeft();
         if (neighbor != null && i == 0 && j == 0) {
-           neighbor.getQueue().enqueue(c); 
+           neighbor.getQueue().enqueue(c);
         }
     }
 
