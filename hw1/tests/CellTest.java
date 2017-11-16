@@ -183,6 +183,23 @@ public class CellTest {
         c20.increaseGen();
         test(c20.getGen() == 3);
 
+        /* dcreaseGen() test */
+        Cell c21 = new Cell(true, 5, 3, 4);
+        test(c21.getGen() == 0);
+        c21.decreaseGen();
+        test(c21.getGen() == -1);
+        c21.decreaseGen();
+        test(c21.getGen() == -2);
+        c21.decreaseGen();
+        test(c21.getGen() == -3);
+        c21.increaseGen();
+        c21.increaseGen();
+        c21.increaseGen();
+        c21.increaseGen();
+        c21.increaseGen();
+        c21.increaseGen();
+        test(c21.getGen() == 3);
+        
         System.out.println("[OK]");
     } 
 

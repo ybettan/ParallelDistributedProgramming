@@ -22,44 +22,29 @@ public class Cell3D {
      */
     public Cell3D(boolean isAlive, int maxNeighbors, int globalI, int globalJ) {
         currentGen = new Cell(isAlive, maxNeighbors, globalI, globalJ);
+        previousGen = new Cell(currentGen);
         nextGen = new Cell(currentGen);
         nextGen.increaseGen();
-    }
-
-    /*
-    Returns a ~new~ copy of the Cell in the current Generation.
-     */
-    public Cell getCurrentCopy() {
-        return new Cell(currentGen);
-    }
-
-    /* FIXME: can i assume that they won't give input gen < 2 ? */
-    public Cell getPreviousCopy() {
-        if (previousGen == null)
-            System.err.println("previousGen wasn't initiallize yet: line " + 
-                    new Throwable().getStackTrace()[0].getLineNumber());
-        return new Cell(previousGen);
-    }
-
-    /*
-    Check if a Cell was updated.
-    Once the function returns true on Generation x it will not return true again!
-     */
-    public boolean wasUpdated() {
-       return currentGen.wasUpdated(); 
+        previousGen.decreaseGen();
     }
 
     /*
     Get an update from a neighbor Cell.
     If the update is not legale the Cell may throw an exeption.
+    do nothing if input cell is null
      */
     public void addNeighbor(Cell c) {
+        if (c == null) return;
+
         /* if this.getGet() == g than c.getGen() == {g, g+1} */
         if (c.getGen() == currentGen.getGen()) {
-            if (currentGen.needOneMoreNeighbor()) {
-                previousGen = new Cell(currentGen);
-            }
             currentGen.addNeighbor(c);
+            if (currentGen.needUpdate()) {
+                previousGen = new Cell(currentGen);
+                currentGen.moveToNextGen();
+                currentGen.takeDataFrom(nextGen);
+                nextGen.moveToNextGen();
+            }
         } else {
             /* must be g+1, an exception will be throw at Cell level if not */
             nextGen.addNeighbor(c);
@@ -67,12 +52,21 @@ public class Cell3D {
     }
 
     /*
-    Once a Cell was updated we want to push it foward.
-    assumes that currentGen just was updated
-    */
-    public  void updateFloors() {
-        currentGen.takeDataFrom(nextGen);
-        nextGen.increaseGen();
+     * return a COPY to the relevant cell by its generation
+     * can return only currentGen and previousGen
+     * don't have access to nextGen
+     */
+    public Cell getCellByGen(int gen) {
+        if (previousGen.getGen() == gen) {
+            return new Cell(previousGen);
+        }
+        else if (currentGen.getGen() == gen) {
+            return new Cell(currentGen);
+        }
+        else {
+            return null;
+        }
+        
     }
 
 }

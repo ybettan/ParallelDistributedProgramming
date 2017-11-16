@@ -10,15 +10,20 @@ public class Cell3DTest {
 
         System.out.print("Cell3DTest...");
 
-        /* constructor & getCurrentCopy test  */
+        /* constructor & getCellByGen() test  */
         Cell3D c1 = new Cell3D(true, 8, 3, 3);
-        /* check that the exception works */
-        //c1.getPreviousCopy();
-        test(c1.getCurrentCopy().isAlive() == true);
-        test(c1.getCurrentCopy().wasUpdated() == false);
-        test(c1.getCurrentCopy().getGen() == 0);
-        test(c1.getCurrentCopy().getGlobalI() == 3);
-        test(c1.getCurrentCopy().getGlobalJ() == 3);
+        test(c1.getCellByGen(-1).isAlive() == true);
+        test(c1.getCellByGen(-1).getGen() == -1);
+        test(c1.getCellByGen(-1).getGlobalI() == 3);
+        test(c1.getCellByGen(-1).getGlobalJ() == 3);
+        test(c1.getCellByGen(0).isAlive() == true);
+        test(c1.getCellByGen(0).getGen() == 0);
+        test(c1.getCellByGen(0).getGlobalI() == 3);
+        test(c1.getCellByGen(0).getGlobalJ() == 3);
+        test(c1.getCellByGen(1).isAlive() == true);
+        test(c1.getCellByGen(1).getGen() == 1);
+        test(c1.getCellByGen(1).getGlobalI() == 3);
+        test(c1.getCellByGen(1).getGlobalJ() == 3);
 
         /* addNeighbor(), wasUpdated(), getPreviousCopy() and updateFloor() test */
         Cell3D c2 = new Cell3D(false, 4, 3, 3);
@@ -27,23 +32,14 @@ public class Cell3DTest {
         c2.addNeighbor(liveCell);
         c2.addNeighbor(liveCell);
         c2.addNeighbor(liveCell);
-        test(c2.getCurrentCopy().isAlive() == false);
-        test(c2.getCurrentCopy().wasUpdated() == false);
-        test(c2.getCurrentCopy().getGen() == 0);
+        test(c2.getCellByGen(0).isAlive() == false);
+        test(c2.getCellByGen(0).getGen() == 0);
         c2.addNeighbor(deadCell);
-        test(c2.getCurrentCopy().isAlive() == true);
-        test(c2.wasUpdated() == true);
-        test(c2.wasUpdated() == false);
-        test(c2.getCurrentCopy().getGen() == 1);
-        c2.updateFloors();
-        test(c2.getPreviousCopy().isAlive() == false);
-        test(c2.getPreviousCopy().wasUpdated() == false);
-        test(c2.getPreviousCopy().getGen() == 0);
-        /* check that nextGen has increased to gen == 2 */
-        liveCell.increaseGen();
-        liveCell.increaseGen();
-        /* if gen < 2 we will receive an exception */
-        c2.addNeighbor(liveCell);
+        test(c2.getCellByGen(1).isAlive() == true);
+        test(c2.getCellByGen(1).getGen() == 1);
+        test(c2.getCellByGen(0).isAlive() == false);
+        test(c2.getCellByGen(0).getGen() == 0);
+        test(c2.getCellByGen(2).getGen() == 2);
 
         System.out.println("[OK]");
     } 

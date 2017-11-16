@@ -50,6 +50,13 @@ public class Cell {
     }
 
     /*
+    Use to decrease the Cell's Generation.
+     */
+    public void decreaseGen() {
+        gen--;
+    }
+
+    /*
     Check if a Cell is alive.
      */
     public boolean isAlive() {
