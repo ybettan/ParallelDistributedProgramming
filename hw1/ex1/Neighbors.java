@@ -1,11 +1,14 @@
 package ex1;
 
-
+/*
+ * Class Neighbors is used to help a thread (field) to communicate with threads around.
+ * Specificly to send copys of Cells after they do an update.
+ */
 public class Neighbors {
     Field up, upRight, right, downRight, down, downLeft, left, upLeft;
 
-    Neighbors(Field up, Field upRight, Field right, Field downRight, Field down, 
-            Field downLeft, Field left, Field upLeft) {
+    Neighbors(Field up, Field upRight, Field right, Field downRight, Field down,
+              Field downLeft, Field left, Field upLeft) {
         this.up = up;
         this.upRight = upRight;
         this.right = right;
@@ -47,5 +50,6 @@ public class Neighbors {
     Field getUpLeft() {
         return upLeft;
     }
+
 
 }
