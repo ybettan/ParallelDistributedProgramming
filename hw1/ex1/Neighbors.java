@@ -7,8 +7,8 @@ package ex1;
 public class Neighbors {
     Field up, upRight, right, downRight, down, downLeft, left, upLeft;
 
-    Neighbors(Field up, Field upRight, Field right, Field downRight, Field down,
-              Field downLeft, Field left, Field upLeft) {
+    public Neighbors(Field up, Field upRight, Field right, Field downRight, Field down,
+                     Field downLeft, Field left, Field upLeft) {
         this.up = up;
         this.upRight = upRight;
         this.right = right;
@@ -19,35 +19,35 @@ public class Neighbors {
         this.upLeft = upLeft;
     }
 
-    Field getUp() {
+    public Field getUp() {
         return up;
     }
 
-    Field getUpRight() {
+    public Field getUpRight() {
         return upRight;
     }
 
-    Field getRight() {
+    public Field getRight() {
         return right;
     }
 
-    Field getDownRight() {
+    public Field getDownRight() {
         return downRight;
     }
 
-    Field getDown() {
+    public Field getDown() {
         return down;
     }
 
-    Field getDownLeft() {
+    public Field getDownLeft() {
         return downLeft;
     }
 
-    Field getLeft() {
+    public Field getLeft() {
         return left;
     }
 
-    Field getUpLeft() {
+    public Field getUpLeft() {
         return upLeft;
     }
 
