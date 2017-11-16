@@ -42,19 +42,38 @@ public class Field implements Runnable {
     } 
 
 //-----------------------------------------------------------------------------
+//                      FIXME:DEBUGGING - remove
+//-----------------------------------------------------------------------------
+
+    public  void printField() {
+        for (int i=0 ; i<field.length ; i++) {
+            for (int j=0 ; j<field[0].length ; j++) {
+                boolean b = field[i][j].getCurrentCopy().isAlive();
+                System.out.print((b ? "t " : "f "));
+            }
+            System.out.println();
+        }
+        System.out.println();
+    }
+
+    public Neighbors getNeighbors() {
+        return neighbors;
+    }
+
+//-----------------------------------------------------------------------------
 //                              private methods
 //-----------------------------------------------------------------------------
 
     private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
             int maxI, int minJ, int maxJ) {
 
-        int numOfRows = maxJ - minJ + 1;
-        int numOfCols = maxI - minI + 1;
+        int numOfRows = maxI - minI + 1;
+        int numOfCols = maxJ - minJ + 1;
         int buttomBoundry = initalField.length;
         int rightBoundry = initalField[0].length;
         Cell3D[][] res = new Cell3D[numOfRows][];
         for (int i = minI ; i <= maxI ; i++) {
-            res[i] = new Cell3D[numOfCols];
+            res[i-minI] = new Cell3D[numOfCols];
             for (int j = minJ ; j <= maxJ ; j++) {
                 boolean isAlive = initalField[i][j];
                 int maxNeighbors;
