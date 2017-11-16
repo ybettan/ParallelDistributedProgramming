@@ -1,6 +1,6 @@
 package ex1;
 
-import java.util.ArrayList;
+import java.util.Vector;
 
 
 public class Field implements Runnable {
@@ -38,14 +38,16 @@ public class Field implements Runnable {
     @Override public void run() {
         autonomusPart();        
         communicationPart();        
+        writeResult();
     } 
 
 //-----------------------------------------------------------------------------
 //                              private methods
 //-----------------------------------------------------------------------------
 
-    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, int maxI, 
-            int minJ, int maxJ) {
+    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
+            int maxI, int minJ, int maxJ) {
+
         int numOfRows = maxJ - minJ + 1;
         int numOfCols = maxI - minI + 1;
         int buttomBoundry = initalField.length;
@@ -56,9 +58,9 @@ public class Field implements Runnable {
             for (int j = minJ ; j <= maxJ ; j++) {
                 boolean isAlive = initalField[i][j];
                 int maxNeighbors;
-                if (isCorner(initalField, i, j)) {
+                if (isCorner(numOfRows-1, numOfCols-1, i, j)) {
                     maxNeighbors = CORNER_MAX_NEIGHBORS;
-                } else if (isSideButNotCorner(initalField, i, j)) {
+                } else if (isSideButNotCorner(numOfRows-1, numOfCols-1, i, j)) {
                     maxNeighbors = SIDE_MAX_NEIGHBORS;
                 } else {
                     maxNeighbors = INTERNAL_MAX_NEIGHBORS;
@@ -69,85 +71,74 @@ public class Field implements Runnable {
         return res;
     }
 
-    private boolean isCorner(boolean[][] anyField, int i, int j) {
+    private boolean isCorner(int maxRow, int maxCol, int i, int j) {
         boolean res = false;
 
-        if (isUpRightCorner(anyField, i, j)) {
+        if (isUpRightCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isDownRightCorner(anyField, i, j)) {
+        if (isDownRightCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isDownLeftCorner(anyField, i, j)) {
+        if (isDownLeftCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isUpLeftCorner(anyField, i, j)) {
+        if (isUpLeftCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
         return res;
     }
 
-    private boolean isUpRightCorner(boolean[][] anyField, int i, int j) {
-        int maxCol = anyField[0].length-1;
-        int maxRow = anyField.length-1;
+    private boolean isUpRightCorner(int maxRow, int maxCol, int i, int j) {
         return (i == 0 && j == maxCol); 
     }
 
-    private boolean isDownRightCorner(boolean[][] anyField, int i, int j) {
-        int maxCol = anyField[0].length-1;
-        int maxRow = anyField.length-1;
+    private boolean isDownRightCorner(int maxRow, int maxCol, int i, int j) {
         return (i == maxRow && j == maxCol); 
     }
 
-    private boolean isDownLeftCorner(boolean[][] anyField, int i, int j) {
-        int maxCol = anyField[0].length-1;
-        int maxRow = anyField.length-1;
+    private boolean isDownLeftCorner(int maxRow, int maxCol, int i, int j) {
         return (i == maxRow && j == 0); 
     }
 
-    private boolean isUpLeftCorner(boolean[][] anyField, int i, int j) {
-        int maxCol = anyField[0].length-1;
-        int maxRow = anyField.length-1;
+    private boolean isUpLeftCorner(int maxRow, int maxCol, int i, int j) {
         return (i == 0 && j == 0); 
     }
 
-    private boolean isSideButNotCorner(boolean[][] anyField, int i, int j) {
+    private boolean isSideButNotCorner(int maxRow, int maxCol, int i, int j) {
         boolean res = false;
 
-        if (isUpSideButNotCorner(anyField, i, )) {
+        if (isUpSideButNotCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isRightSideButNotCorner(anyField, i, )) {
+        if (isRightSideButNotCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isDownSideButNotCorner(anyField, i, )) {
+        if (isDownSideButNotCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
-        if (isLeftSideButNotCorner(anyField, i, )) {
+        if (isLeftSideButNotCorner(maxRow, maxCol, i, j)) {
             res = true;
         }
         return res;
     }
 
-    private boolean isUpSideButNotCorner(boolean[][] anyField, int i, int j) {
-        return (i == 0 && !isCorner(anyField, i, j);
+    private boolean isUpSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+        return ( i == 0 && !isCorner(maxRow, maxCol, i, j) );
     }
 
-    private boolean isRightSideButNotCorner(boolean[][] anyField, int i, int j) {
-        int maxCol = anyField[0].length-1;
-        return (j == maxCol && !isCorner(anyField, i, j);
+    private boolean isRightSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+        return ( j == maxCol && !isCorner(maxRow, maxCol, i, j) );
     }
 
-    private boolean isDownSideButNotCorner(boolean[][] anyField, int i, int j) {
-        int maxRow = anyField.length-1;
-        return (i == maxRow && !isCorner(anyField, i, j);
+    private boolean isDownSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+        return ( i == maxRow && !isCorner(maxRow, maxCol, i, j) );
     }
 
-    private boolean isLeftSideButNotCorner(boolean[][] anyField, int i, int j) {
-        return (j == 0 && !isCorner(anyField, i, j);
+    private boolean isLeftSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+        return ( j == 0 && !isCorner(maxRow, maxCol, i, j) );
     }
 
-    /* for a IxJ field, autonomus calculation can be done on (I-2)x(J-2) field */
     private void autonomusPart() {
         autonumusCornerPart();
         autonumusSidePart();
@@ -274,21 +265,9 @@ public class Field implements Runnable {
         int maxRow = field.length-1;
 
         /* while not all cells have arrived to required generation */
-        while (numOfDoneCells < field.length * field[0].length) {
+        while (numOfDoneCells < (maxCol+1) * (maxRow+1)) {
            Cell cellFromOtherThread = queue.dequeue();
-
-           /* find all the Cell3D that needs that cellFromOtherThread */ 
-           ArrayList<Cell3D> destCells3D = new ArrayList<>();
-           int globalIFromOtherThread = cellFromOtherThread.getGlobalI();
-           int globalJFromOtherThread = cellFromOtherThread.getGlobalJ();
-           
-           /* cellFromOtherThread come from up right neighbor thread */
-           if () {
-               
-           }
-
-
-           recursiveAddNeighbors(destCells3D, cellFromOtherThread);
+           recursiveAddNeighbors(cellFromOtherThread);
         }
     }        
 
@@ -341,13 +320,155 @@ public class Field implements Runnable {
         }
     }
 
-    private void recursiveAddNeighbors(ArrayList<Cell3D> destCells3D, Cell c ) {
-         while (destCells3D.size() > 0) {
-             Cell3D dest = destCells3D.get(0);
-             destCells3D.remove(0);
-         }
+    private void recursiveAddNeighbors(Cell cellFromOtherThread) {
+
+        Vector<Cell3D> dependencies = getDependecies(cellFromOtherThread);    
+
+        for (Cell3D dep : dependencies) {
+            dep.addNeighbor(cellFromOtherThread);
+            if (dep.wasUpdated()) {
+                if (dep.getCurrentCopy().getGen() == generations) {
+                    numOfDoneCells++;
+                }
+                recursiveAddNeighbors(dep.getCurrentCopy());
+            }
+        }
+
+    }
+
+    private Vector<Cell3D> getDependecies(Cell cellFromOtherThread) {
+
+        int maxCol = field[0].length-1;
+        int maxRow = field.length-1;
+
+        /* find all the Cell3D that needs that cellFromOtherThread */ 
+        int globalIFromOtherThread = cellFromOtherThread.getGlobalI();
+        int globalJFromOtherThread = cellFromOtherThread.getGlobalJ();
+
+        Vector<Cell3D> res = new Vector<>();
+
+        /* cellFrom another thread is a perfect corner so one of the 4 field 
+         * corners is res */
+
+        /* only up right corner needs it */
+        if (isUpRightCorner(maxRow, maxCol, globalIFromOtherThread+1, 
+                    globalJFromOtherThread-1)) {
+            res.addElement(field[0][maxCol]);
+        }
+        /* only down right corner needs it */
+        else if (isDownRightCorner(maxRow, maxCol, globalIFromOtherThread-1, 
+                    globalJFromOtherThread-1)) {
+            res.addElement(field[maxRow][maxCol]);
+        }
+        /* only down left corner needs it */
+        else if (isDownLeftCorner(maxRow, maxCol, globalIFromOtherThread-1, 
+                    globalJFromOtherThread+1)) {
+            res.addElement(field[maxRow][0]);
+        }
+        /* only up left corner needs it */
+        else if (isUpLeftCorner(maxRow, maxCol, globalIFromOtherThread+1, 
+                    globalJFromOtherThread+1)) {
+            res.addElement(field[0][0]);
+        }
+
+        /* cellFrom another thread is a NOT perfect corner so one of the 4
+         * corner and another one next to it are res */
+
+        /* up right NOT perfect corner case - 2 cases */
+        else if (isUpSideButNotCorner(maxRow, maxCol,globalIFromOtherThread+1,
+                    globalJFromOtherThread-1)){
+            res.addElement(field[0][maxCol]);
+            res.addElement(field[0][maxCol-1]);
+        }
+        else if (isRightSideButNotCorner(maxRow, maxCol,globalIFromOtherThread+1,
+                    globalJFromOtherThread-1)){
+            res.addElement(field[0][maxCol]);
+            res.addElement(field[1][maxCol]);
+        }
+        /* down right NOT perfect corner case - 2 cases */
+        else if (isRightSideButNotCorner(maxRow, maxCol,globalIFromOtherThread-1,
+                    globalJFromOtherThread-1)){
+            res.addElement(field[maxRow][maxCol]);
+            res.addElement(field[maxRow-1][maxCol]);
+        }
+        else if (isDownSideButNotCorner(maxRow, maxCol,globalIFromOtherThread-1,
+                    globalJFromOtherThread-1)){
+            res.addElement(field[maxRow][maxCol]);
+            res.addElement(field[maxRow][maxCol-1]);
+        }
+        /* down left NOT perfect corner case - 2 cases */
+        else if (isDownSideButNotCorner(maxRow, maxCol,globalIFromOtherThread-1,
+                    globalJFromOtherThread+1)){
+            res.addElement(field[maxRow][0]);
+            res.addElement(field[maxRow][1]);
+        }
+        else if (isLeftSideButNotCorner(maxRow, maxCol,globalIFromOtherThread-1,
+                    globalJFromOtherThread+1)){
+            res.addElement(field[maxRow][0]);
+            res.addElement(field[maxRow-1][0]);
+        }
+        /* up left NOT perfect corner case - 2 cases */
+        else if (isLeftSideButNotCorner(maxRow, maxCol,globalIFromOtherThread+1,
+                    globalJFromOtherThread+1)){
+            res.addElement(field[0][0]);
+            res.addElement(field[1][0]);
+        }
+        else if (isUpSideButNotCorner(maxRow, maxCol,globalIFromOtherThread+1,
+                    globalJFromOtherThread+1)){
+            res.addElement(field[0][0]);
+            res.addElement(field[0][1]);
+        }
+
+
+        /* cellFrom another thread is not a corner so it has 3 res */
+
+        /* up case */
+        else if (isUpSideButNotCorner(maxRow, maxCol,globalIFromOtherThread+1,
+                    globalJFromOtherThread)){
+            res.addElement(field[0][globalJFromOtherThread-1]);
+            res.addElement(field[0][globalJFromOtherThread]);
+            res.addElement(field[0][globalJFromOtherThread+1]);
+        }
+        /* right case */
+        else if (isRightSideButNotCorner(maxRow, maxCol,globalIFromOtherThread,
+                    globalJFromOtherThread-1)){
+            res.addElement(field[globalIFromOtherThread-1][maxCol]);
+            res.addElement(field[globalIFromOtherThread][maxCol]);
+            res.addElement(field[globalIFromOtherThread+1][maxCol]);
+        }
+        /* down case */
+        else if (isDownSideButNotCorner(maxRow, maxCol,globalIFromOtherThread-1,
+                    globalJFromOtherThread)){
+            res.addElement(field[maxRow][globalJFromOtherThread-1]);
+            res.addElement(field[maxRow][globalJFromOtherThread]);
+            res.addElement(field[maxRow][globalJFromOtherThread+1]);
+        }
+        /* left case */
+        else if (isLeftSideButNotCorner(maxRow, maxCol,globalIFromOtherThread,
+                    globalJFromOtherThread+1)){
+            res.addElement(field[globalIFromOtherThread-1][maxCol]);
+            res.addElement(field[globalIFromOtherThread][maxCol]);
+            res.addElement(field[globalIFromOtherThread+1][maxCol]);
+        }
+        return res;
+    }
+
+    private void writeResult() {
+         
+        int maxCol = field[0].length-1;
+        int maxRow = field.length-1;
+
+        for (int i = 0 ; i <= maxRow ; i++) {
+            for (int j = 0 ; j <= maxCol ; j++) {
+                result[1][i][j] = field[i][j].getCurrentCopy().isAlive();
+                result[0][i][j] = field[i][j].getPreviousCopy().isAlive();
+            }
+        }
     }
 
 }
+
+
+
 
 
