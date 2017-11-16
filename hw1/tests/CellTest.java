@@ -43,26 +43,22 @@ public class CellTest {
         test(c8.getGlobalI() == 6);
         test(c8.getGlobalJ() == 3);
 
-        /* wasUpdated(), getGen() & addNeighbor() test */
+        /* getGen() & addNeighbor() test */
         Cell deadCell = new Cell(false, 4, 6, 3);
         Cell liveCell = new Cell(true, 4, 6, 3);
         Cell c9 = new Cell(false, 4, 6, 3);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 0);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == false);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 1);
         /* this and the next copies are to update the inputCell gen */
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(deadCell);
-        deadCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 1);
@@ -71,32 +67,27 @@ public class CellTest {
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == false);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 2);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(deadCell);
-        deadCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 2);
         test(deadCell.getGen() == 2);
         c9.addNeighbor(liveCell);
         c9.addNeighbor(liveCell);
+        test(c9.needUpdate() == false);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == false);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 3);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(deadCell);
-        deadCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 3);
@@ -105,15 +96,12 @@ public class CellTest {
         c9.addNeighbor(liveCell);
         c9.addNeighbor(liveCell);
         c9.addNeighbor(deadCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == true);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 4);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        liveCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 4);
@@ -122,15 +110,12 @@ public class CellTest {
         c9.addNeighbor(liveCell);
         c9.addNeighbor(deadCell);
         c9.addNeighbor(deadCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == true);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 5);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        deadCell.addNeighbor(deadCell);
-        liveCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 5);
@@ -139,21 +124,18 @@ public class CellTest {
         c9.addNeighbor(liveCell);
         c9.addNeighbor(liveCell);
         c9.addNeighbor(liveCell);
+        test(c9.needUpdate() == true);
+        c9.moveToNextGen();
         test(c9.isAlive() == false);
-        test(c9.wasUpdated() == true);
-        test(c9.wasUpdated() == false);
         test(c9.getGen() == 6);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(liveCell);
-        liveCell.addNeighbor(deadCell);
-        deadCell = new Cell(c9);
+        liveCell.increaseGen();
+        deadCell.increaseGen();
         test(liveCell.isAlive() == true);
         test(deadCell.isAlive() == false);
         test(liveCell.getGen() == 6);
         test(deadCell.getGen() == 6);
 
-        /* takeDataFrom() test */
+        ///* takeDataFrom() test */
         Cell deadCell0 = new Cell(false, 4, 6, 3);
         Cell liveCell0 = new Cell(true, 4, 6, 3);
         Cell deadCell1 = new Cell(false, 4, 6, 3);
@@ -162,33 +144,15 @@ public class CellTest {
         test(deadCell0.isAlive() == false);
         test(liveCell0.getGen() == 0);
         test(deadCell0.getGen() == 0);
-        test(liveCell1.isAlive() == true);
-        test(deadCell1.isAlive() == false);
-        test(liveCell1.getGen() == 0);
-        test(deadCell1.getGen() == 0);
-        liveCell1.addNeighbor(liveCell0);
-        liveCell1.addNeighbor(liveCell0);
-        liveCell1.addNeighbor(liveCell0);
-        liveCell1.addNeighbor(deadCell0);
-        deadCell1.addNeighbor(deadCell0);
-        deadCell1.addNeighbor(deadCell0);
-        deadCell1.addNeighbor(deadCell0);
-        deadCell1.addNeighbor(deadCell0);
+        liveCell1.increaseGen();
+        deadCell1.increaseGen();
         test(liveCell1.isAlive() == true);
         test(deadCell1.isAlive() == false);
         test(liveCell1.getGen() == 1);
         test(deadCell1.getGen() == 1);
         Cell currentGen = new Cell(false, 4, 6, 3);
         Cell nextGen = new Cell(false, 4, 6, 3);
-
-        nextGen.addNeighbor(liveCell0);
-        nextGen.addNeighbor(liveCell0);
-        nextGen.addNeighbor(deadCell0);
-        nextGen.addNeighbor(deadCell0);
-        test(nextGen.getGen() == 1);
-        test(nextGen.wasUpdated() == true);
-        test(nextGen.wasUpdated() == false);
-
+        nextGen.increaseGen();
         test(currentGen.getGen() == 0);
         test(nextGen.getGen() == 1);
 
@@ -196,19 +160,17 @@ public class CellTest {
         nextGen.addNeighbor(liveCell1);
         nextGen.addNeighbor(liveCell1);
         test(nextGen.isAlive() == false);
-        test(nextGen.wasUpdated() == false);
         test(nextGen.getGen() == 1);
         currentGen.takeDataFrom(nextGen);
         test(nextGen.getGen() == 1);
         nextGen.increaseGen();
         currentGen.addNeighbor(deadCell0);
+        test(currentGen.needUpdate() == true);
+        currentGen.moveToNextGen();
         test(nextGen.isAlive() == false);
-        test(nextGen.wasUpdated() == false);
         test(nextGen.getGen() == 2);
 
         test(currentGen.isAlive() == true);
-        test(currentGen.wasUpdated() == true);
-        test(currentGen.wasUpdated() == false);
         test(currentGen.getGen() == 1);
         
         /* increaseGen() test */
@@ -220,20 +182,6 @@ public class CellTest {
         test(c20.getGen() == 2);
         c20.increaseGen();
         test(c20.getGen() == 3);
-
-        /* needOneMoreNeighbor() test */
-        Cell c21 = new Cell(true, 5, 3, 3);
-        Cell tmp = new Cell(true, 5, 3, 3);
-        test(c21.needOneMoreNeighbor() == false);
-        c21.addNeighbor(tmp);
-        test(c21.needOneMoreNeighbor() == false);
-        c21.addNeighbor(tmp);
-        test(c21.needOneMoreNeighbor() == false);
-        c21.addNeighbor(tmp);
-        test(c21.needOneMoreNeighbor() == false);
-        c21.addNeighbor(tmp);
-        test(c21.needOneMoreNeighbor() == true);
-        
 
         System.out.println("[OK]");
     } 

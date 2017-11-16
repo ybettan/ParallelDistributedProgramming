@@ -50,26 +50,10 @@ public class Cell {
     }
 
     /*
-    Check if a Cell can do an update or rather it needs more updates from neighbors.
-     */
-    public boolean needOneMoreNeighbor() {
-        return checkedNeighbors == MAX_NEIGHBORS - 1;
-    }
-
-    /*
     Check if a Cell is alive.
      */
     public boolean isAlive() {
         return isAlive;
-    }
-
-    /*
-    Wonce the Board updates the cell it will start to notify that it was updated, and does not need a new update.
-     */
-    public boolean wasUpdated() {
-        boolean tmp = wasUpdated;
-        wasUpdated = false;
-        return tmp;
     }
 
     /*
@@ -113,16 +97,20 @@ public class Cell {
         if (c.isAlive()) {
             aliveNeighbors++;
         }
-        // if we handlend all neighbors we can update the cell to next gen
-        if (checkedNeighbors == MAX_NEIGHBORS) {
-            moveToNextGen();
-        }
+    }
+
+    /* 
+     return whether a cell is ready to move to next generation
+     */
+    public boolean needUpdate() {
+        return (checkedNeighbors == MAX_NEIGHBORS);
     }
 
     /*
-    Once a Cell was updated by all his neighbors, this method will move him to the next generation.
+    Once a Cell was updated by all his neighbors, this method will move him to 
+    the next generation.
      */
-    private void moveToNextGen() {
+    public  void moveToNextGen() {
         // FIXME: just for debugging - remove when finish
         if (aliveNeighbors > checkedNeighbors) 
             System.err.println("asserer faild at line " + 
@@ -135,7 +123,6 @@ public class Cell {
         gen++;
         checkedNeighbors = 0;
         aliveNeighbors = 0;
-        wasUpdated = true;
     }
 
 }
