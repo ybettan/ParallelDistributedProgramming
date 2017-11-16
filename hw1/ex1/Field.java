@@ -169,13 +169,15 @@ public class Field implements Runnable {
     private void sendMargins() {
         for (int row=0; row < field.length; row++) {
             for (int col=0; col < field[0].length; col++){
-                if ((row == 0) || (row==field.length-1) || (col==0) || (col==field[0].length-1))
+                if ((row == 0) || (row==field.length-1) || (col==0) || 
+                        (col==field[0].length-1))
                     sendToNeighbors(field[row][col].getCurrentCopy(),row,col);
             }
         }
     }
     /*
-     * build a recursive pyramid of generations. each time the function will compute the generation for the given base
+     * build a recursive pyramid of generations. each time the function will 
+     * compute the generation for the given base
      * which the dimensions limited by: rows start at min row and end at max row.
      *                                  columns start at min col and end at max col.
      * next the the function will calculate the new dimensions for the next base and call it self again.
@@ -185,7 +187,8 @@ public class Field implements Runnable {
      *          2) if the max generation was calculated.
      *          3) if no cell advanced a generation during
      */
-    private void buildPyramid(int minRow, int maxRow, int minCol, int maxCol, int currentGeneration) {
+    private void buildPyramid(int minRow, int maxRow, int minCol, int maxCol, 
+            int currentGeneration) {
         // stopping conditions.
         if (currentGeneration == generations) {
             numOfDoneCells = (maxCol-minCol) * (maxRow-minRow);
@@ -200,43 +203,55 @@ public class Field implements Runnable {
             for (int col=minCol; col < maxCol; col++) {
                 // look up:
                 if (row > minRow) {
-                    field[row][col].addNeighbor(field[row-1][col].getByGen(currentGeneration));
+                    field[row][col].addNeighbor(
+                            field[row-1][col].getByGen(currentGeneration));
                     // look up and left
                     if (col>minCol)
-                        field[row][col].addNeighbor(field[row-1][col-1].getByGen(currentGeneration));
+                        field[row][col].addNeighbor(
+                                field[row-1][col-1].getByGen(currentGeneration));
                     // look up and right
                     if (col < maxCol-1)
-                        field[row][col].addNeighbor(field[row-1][col+1].getByGen(currentGeneration));
+                        field[row][col].addNeighbor(
+                                field[row-1][col+1].getByGen(currentGeneration));
                 }
                 // look down
                 if (row < maxRow) {
-                    field[row][col].addNeighbor(field[row+1][col].getByGen(currentGeneration));
+                    field[row][col].addNeighbor(
+                            field[row+1][col].getByGen(currentGeneration));
                     // look down and right
                     if (col < maxCol-1)
-                        field[row][col].addNeighbor(field[row+1][col+1].getByGen(currentGeneration));
+                        field[row][col].addNeighbor(
+                                field[row+1][col+1].getByGen(currentGeneration));
                     // look down and left
                     if (col>minCol)
-                        field[row][col].addNeighbor(field[row+1][col-1].getByGen(currentGeneration));
+                        field[row][col].addNeighbor(
+                                field[row+1][col-1].getByGen(currentGeneration));
                 }
                 // look left
                 if (col>minCol)
-                    field[row][col].addNeighbor(field[row][col-1].getByGen(currentGeneration));
+                    field[row][col].addNeighbor(
+                            field[row][col-1].getByGen(currentGeneration));
                 // look right
                 if (col < maxCol)
-                    field[row][col].addNeighbor(field[row][col+1].getByGen(currentGeneration));
-                // find the first cell that was updated. he is the top left corner of the pyramid above.
-                if ((nextMinCol == -1) && (field[row][col].getByGen(currentGeneration+1) != null)) {
+                    field[row][col].addNeighbor(
+                            field[row][col+1].getByGen(currentGeneration));
+                // find the first cell that was updated. he is the top 
+                // left corner of the pyramid above.
+                if ((nextMinCol == -1) && 
+                        (field[row][col].getByGen(currentGeneration+1) != null)) {
                     nextMinCol = col;
                     nextMinRow = row;
                 }
-                // find the last cell that was updated. he is the bottom left corner of the pyramid above.
+                // find the last cell that was updated. 
+                // he is the bottom left corner of the pyramid above.
                 if (field[row][col].getByGen(currentGeneration+1) != null) {
                     nextMaxCol = col;
                     nextMaxRow = row;
                 }
             }
         }
-        buildPyramid(nextMinRow, nextMaxRow, nextMinCol, nextMaxCol, currentGeneration+1);
+        buildPyramid(nextMinRow, nextMaxRow, nextMinCol, nextMaxCol, 
+                currentGeneration+1);
     }
 
     /* update all relevant neighbors recursively for each Cell in queue */
