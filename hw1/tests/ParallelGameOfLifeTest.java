@@ -123,24 +123,46 @@ class field_stages {
             }, {
                     {false, false, false, false, false},
                     {false, true, true, false, false},
-                    {false, true, true, false, false},
+                    {true, false, false, true, false},
                     {false, true, true, false, false},
                     {false, false, false, false, false}
             }, {
                     {false, false, false, false, false},
-                    {false, true, true, false, false},
-                    {false, true, true, false, false},
-                    {false, true, true, false, false},
+                    {false, false, false, false, false},
+                    {false, false, false, false, false},
+                    {false, false, false, false, false},
                     {false, false, false, false, false}
             }
     };
     field_stages() { }
 }
+class FieldAlonTest {
+
+    public static void testFieldThroughParallelGOF( boolean[][][] fieldGenerations) {
+        int vSplit = 1, hSplit = 1;
+        ParallelGameOfLife pGof = new ParallelGameOfLife();
+        int maxGeneration = 2;
+        pGof.sethSplit(hSplit);
+        pGof.setvSplit(vSplit);
+        boolean[][][] res = pGof.allocateGofResult(fieldGenerations[0]);
+        pGof.allocateAndCreateFields(fieldGenerations[0], res, maxGeneration);
+        pGof.applyNeighbors();
+        Field[][] f = pGof.getThreadLocations();
+        f[0][0].autonomousPart();
+        f[0][0].writeResult();
+        for (int i = 0; i < 2 ; i++)
+            for (int j = 0; j < fieldGenerations[0].length; j++)
+                for (int k = 0; k < fieldGenerations[0][0].length; k++)
+                    assert (fieldGenerations[i+1][j][k] == res[i][j][k]);
+    }
+}
+
+
 public class ParallelGameOfLifeTest {
 
     ParallelGameOfLifeTest(){}
 
-    public static boolean test(int vSplit, int hSplit, boolean[][][] fieldGenerations) {
+    public static void test(int vSplit, int hSplit, boolean[][][] fieldGenerations) {
 
         ParallelGameOfLife pGOF = new ParallelGameOfLife();
         int maxGeneration = 2;
@@ -190,13 +212,17 @@ public class ParallelGameOfLifeTest {
             }
 
         }
-
-        return true;
     }
     public static void main(String args[]) {
+        field_stages fs = new field_stages();
+        System.out.print("ParallelGameOfLifeTest...");
+        FieldAlonTest.testFieldThroughParallelGOF(fs.hardToSplit);
+        FieldAlonTest.testFieldThroughParallelGOF(fs.column2);
+        FieldAlonTest.testFieldThroughParallelGOF(fs.row2);
+
 
         System.out.print("ParallelGameOfLifeTest...");
-        field_stages fs = new field_stages();
+
         for (int vSplit = 1; vSplit < 6; vSplit++){
             for (int hSplit = 1; hSplit < 6; hSplit++) {
                 if ((vSplit < fs.all_dead.length) && (hSplit < fs.all_dead[0].length))
