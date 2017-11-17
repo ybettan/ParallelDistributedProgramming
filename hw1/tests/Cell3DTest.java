@@ -12,18 +12,14 @@ public class Cell3DTest {
 
         /* constructor & getCellByGen() test  */
         Cell3D c1 = new Cell3D(true, 8, 3, 3);
-        test(c1.getCellByGen(-1).isAlive() == true);
-        test(c1.getCellByGen(-1).getGen() == -1);
-        test(c1.getCellByGen(-1).getGlobalI() == 3);
-        test(c1.getCellByGen(-1).getGlobalJ() == 3);
-        test(c1.getCellByGen(0).isAlive() == true);
-        test(c1.getCellByGen(0).getGen() == 0);
-        test(c1.getCellByGen(0).getGlobalI() == 3);
-        test(c1.getCellByGen(0).getGlobalJ() == 3);
-        test(c1.getCellByGen(1).isAlive() == true);
-        test(c1.getCellByGen(1).getGen() == 1);
-        test(c1.getCellByGen(1).getGlobalI() == 3);
-        test(c1.getCellByGen(1).getGlobalJ() == 3);
+        test(c1.getCellCopyByGen(-1).isAlive() == true);
+        test(c1.getCellCopyByGen(-1).getGen() == -1);
+        test(c1.getCellCopyByGen(-1).getGlobalI() == 3);
+        test(c1.getCellCopyByGen(-1).getGlobalJ() == 3);
+        test(c1.getCellCopyByGen(0).isAlive() == true);
+        test(c1.getCellCopyByGen(0).getGen() == 0);
+        test(c1.getCellCopyByGen(0).getGlobalI() == 3);
+        test(c1.getCellCopyByGen(0).getGlobalJ() == 3);
 
         /* addNeighbor(), wasUpdated(), getPreviousCopy() and updateFloor() test */
         Cell3D c2 = new Cell3D(false, 4, 3, 3);
@@ -32,14 +28,13 @@ public class Cell3DTest {
         c2.addNeighbor(liveCell);
         c2.addNeighbor(liveCell);
         c2.addNeighbor(liveCell);
-        test(c2.getCellByGen(0).isAlive() == false);
-        test(c2.getCellByGen(0).getGen() == 0);
+        test(c2.getCellCopyByGen(0).isAlive() == false);
+        test(c2.getCellCopyByGen(0).getGen() == 0);
         c2.addNeighbor(deadCell);
-        test(c2.getCellByGen(1).isAlive() == true);
-        test(c2.getCellByGen(1).getGen() == 1);
-        test(c2.getCellByGen(0).isAlive() == false);
-        test(c2.getCellByGen(0).getGen() == 0);
-        test(c2.getCellByGen(2).getGen() == 2);
+        test(c2.getCellCopyByGen(1).isAlive() == true);
+        test(c2.getCellCopyByGen(1).getGen() == 1);
+        test(c2.getCellCopyByGen(0).isAlive() == false);
+        test(c2.getCellCopyByGen(0).getGen() == 0);
 
         System.out.println("[OK]");
     } 

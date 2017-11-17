@@ -56,7 +56,7 @@ public class Cell3D {
      * can return only currentGen and previousGen
      * don't have access to nextGen
      */
-    public Cell getCellByGen(int gen) {
+    public Cell getCellCopyByGen(int gen) {
         if (previousGen.getGen() == gen) {
             return new Cell(previousGen);
         }
@@ -67,6 +67,20 @@ public class Cell3D {
             return null;
         }
         
+    }
+
+    /*
+     * return the global row index of the Cell3D in the original field
+     */
+    public int getGlobalI() {
+        return currentGen.getGlobalI();
+    }
+
+    /*
+     * return the global colon index of the Cell3D in the original field
+     */
+    public int getGlobalJ() {
+        return currentGen.getGlobalJ();
     }
 
 }
