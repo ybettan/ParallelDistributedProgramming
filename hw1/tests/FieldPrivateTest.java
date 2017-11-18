@@ -24,6 +24,13 @@ public class FieldPrivateTest {
                                      {false},
                                      {true} };
 
+        boolean[][] initalField4 = { {false, true, true, true, false, false},
+                                     {true, false, true, true, false, false},
+                                     {true, true, false, true, true, true},
+                                     {true, true, true, false, true, true},
+                                     {false, false, true, true, false, false},
+                                     {false, false, true, true, false, false} };
+
         
         boolean[][][] resultField1 = new boolean[2][][];
         resultField1[0] = new boolean[6][];
@@ -45,6 +52,14 @@ public class FieldPrivateTest {
             for (int i=0 ; i<6 ; i++) {
                 resultField3[0][i] = new boolean[1];
                 resultField3[1][i] = new boolean[1];
+            }
+
+        boolean[][][] resultField4 = new boolean[2][][];
+        resultField4[0] = new boolean[6][];
+        resultField4[1] = new boolean[6][];
+            for (int i=0 ; i<6 ; i++) {
+                resultField4[0][i] = new boolean[6];
+                resultField4[1][i] = new boolean[6];
             }
 
         /* constructor and createPartialCopy()  */
@@ -89,15 +104,15 @@ public class FieldPrivateTest {
         //f32.printField();
         //f33.printField();
         
-        //f10.setNeighbors(new Neighbors(null, null, f1, f4, f3, null, null, null));
-        //f11.setNeighbors(new Neighbors(null, null, f2, f5, f4, f3, f0, null));
-        //f12.setNeighbors(new Neighbors(null, null, null, null, f5, f4, f1, null));
-        //f13.setNeighbors(new Neighbors(f0, f1, f4, f7, f6, null, null, null));
-        //f14.setNeighbors(new Neighbors(f1, f2, f5, f8, f7, f6, f3, f0));
-        //f15.setNeighbors(new Neighbors(f2, null, null, null, f8, f7, f4, f1));
-        //f16.setNeighbors(new Neighbors(f3, f4, f7, null, null, null, null, null));
-        //f17.setNeighbors(new Neighbors(f4, f5, f8, null, null, null, f6, f3));
-        //f18.setNeighbors(new Neighbors(f5, null, null, null, null, null, f7, f4));
+        Field f40 = new Field(initalField4, 0, 1, 0, 1, 1, resultField4);
+        Field f41 = new Field(initalField4, 0, 1, 2, 3, 1, resultField4);
+        Field f42 = new Field(initalField4, 0, 1, 4, 5, 1, resultField4);
+        Field f43 = new Field(initalField4, 2, 3, 0, 1, 1, resultField4);
+        Field f44 = new Field(initalField4, 2, 3, 2, 3, 1, resultField4);
+        Field f45 = new Field(initalField4, 2, 3, 4, 5, 1, resultField4);
+        Field f46 = new Field(initalField4, 4, 5, 0, 1, 1, resultField4);
+        Field f47 = new Field(initalField4, 4, 5, 2, 3, 1, resultField4);
+        Field f48 = new Field(initalField4, 4, 5, 4, 5, 1, resultField4);
 
         /* test getMaxNeighbors() */
         test(f10.getMaxNeighbors(initalField1, 0, 0) == 3);
@@ -126,6 +141,40 @@ public class FieldPrivateTest {
         test(f10.getMaxNeighbors(initalField3, 3, 0) == 1);
         test(f10.getMaxNeighbors(initalField3, 3, 3) == -1);
 
+        /* send Margins() test */
+        f40.setNeighbors(new Neighbors(null, null, f41, f44, f43, null, null, null));
+        f41.setNeighbors(new Neighbors(null, null, f42, f45, f44, f43, f40, null));
+        f42.setNeighbors(new Neighbors(null, null, null, null, f45, f44, f41, null));
+        f43.setNeighbors(new Neighbors(f40, f41, f44, f47, f46, null, null, null));
+        f44.setNeighbors(new Neighbors(f41, f42, f45, f48, f47, f46, f43, f40));
+        f45.setNeighbors(new Neighbors(f42, null, null, null, f48, f47, f44, f41));
+        f46.setNeighbors(new Neighbors(f43, f44, f47, null, null, null, null, null));
+        f47.setNeighbors(new Neighbors(f44, f45, f48, null, null, null, f46, f43));
+        f48.setNeighbors(new Neighbors(f45, null, null, null, null, null, f47, f44));
+        
+        f40.sendMargins();
+        test(f41.areEqualCells(f41.getQueue().dequeue(), f40.getCellCopyByGen(0, 1, 0)));
+        test(f41.areEqualCells(f41.getQueue().dequeue(), f40.getCellCopyByGen(1, 1, 0)));
+        test(f43.areEqualCells(f43.getQueue().dequeue(), f40.getCellCopyByGen(1, 0, 0)));
+        test(f43.areEqualCells(f43.getQueue().dequeue(), f40.getCellCopyByGen(1, 1, 0)));
+        test(f43.areEqualCells(f44.getQueue().dequeue(), f40.getCellCopyByGen(1, 1, 0)));
+
+        f44.sendMargins();
+        test(f44.areEqualCells(f40.getQueue().dequeue(), f44.getCellCopyByGen(0, 0, 0)));
+        test(f44.areEqualCells(f41.getQueue().dequeue(), f44.getCellCopyByGen(0, 0, 0)));
+        test(f44.areEqualCells(f43.getQueue().dequeue(), f44.getCellCopyByGen(0, 0, 0)));
+
+        test(f44.areEqualCells(f41.getQueue().dequeue(), f44.getCellCopyByGen(0, 1, 0)));
+        test(f44.areEqualCells(f42.getQueue().dequeue(), f44.getCellCopyByGen(0, 1, 0)));
+        test(f44.areEqualCells(f45.getQueue().dequeue(), f44.getCellCopyByGen(0, 1, 0)));
+
+        test(f44.areEqualCells(f43.getQueue().dequeue(), f44.getCellCopyByGen(1, 0, 0)));
+        test(f44.areEqualCells(f46.getQueue().dequeue(), f44.getCellCopyByGen(1, 0, 0)));
+        test(f44.areEqualCells(f47.getQueue().dequeue(), f44.getCellCopyByGen(1, 0, 0)));
+
+        test(f44.areEqualCells(f45.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
+        test(f44.areEqualCells(f47.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
+        test(f44.areEqualCells(f48.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
 
         System.out.println("[OK]");
     } 
@@ -135,5 +184,4 @@ public class FieldPrivateTest {
            System.err.println("ERROR");
     }
 
-        
 }

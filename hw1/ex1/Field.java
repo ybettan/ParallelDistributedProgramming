@@ -62,6 +62,19 @@ public class Field implements Runnable {
         return neighbors;
     }
 
+    public Cell getCellCopyByGen(int i, int j, int gen) {
+        return field[i][j].getCellCopyByGen(gen);    
+    }
+
+    public void printCell(Cell c) {
+        System.out.println("isAlive = " + c.isAlive());
+        System.out.println("gen = " + c.getGen());
+    }
+
+    public boolean areEqualCells(Cell c1, Cell c2) {
+        return (c1.isAlive() == c2.isAlive() && c1.getGen() == c2.getGen());
+    }
+
 //-----------------------------------------------------------------------------
 //                              private methods
 //-----------------------------------------------------------------------------
@@ -126,73 +139,77 @@ public class Field implements Runnable {
 
     }
 
-    private boolean isCorner(int maxRow, int maxCol, int i, int j) {
-        boolean res = false;
+//-----------------------------------------------------------------------------
+//                              FIXME: remove?
+//-----------------------------------------------------------------------------
+    //private boolean isCorner(int maxRow, int maxCol, int i, int j) {
+    //    boolean res = false;
 
-        if (isUpRightCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isDownRightCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isDownLeftCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isUpLeftCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        return res;
-    }
+    //    if (isUpRightCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isDownRightCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isDownLeftCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isUpLeftCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    return res;
+    //}
 
-    private boolean isUpRightCorner(int maxRow, int maxCol, int i, int j) {
-        return (i == 0 && j == maxCol); 
-    }
+    //private boolean isUpRightCorner(int maxRow, int maxCol, int i, int j) {
+    //    return (i == 0 && j == maxCol); 
+    //}
 
-    private boolean isDownRightCorner(int maxRow, int maxCol, int i, int j) {
-        return (i == maxRow && j == maxCol); 
-    }
+    //private boolean isDownRightCorner(int maxRow, int maxCol, int i, int j) {
+    //    return (i == maxRow && j == maxCol); 
+    //}
 
-    private boolean isDownLeftCorner(int maxRow, int maxCol, int i, int j) {
-        return (i == maxRow && j == 0); 
-    }
+    //private boolean isDownLeftCorner(int maxRow, int maxCol, int i, int j) {
+    //    return (i == maxRow && j == 0); 
+    //}
 
-    private boolean isUpLeftCorner(int maxRow, int maxCol, int i, int j) {
-        return (i == 0 && j == 0); 
-    }
+    //private boolean isUpLeftCorner(int maxRow, int maxCol, int i, int j) {
+    //    return (i == 0 && j == 0); 
+    //}
 
-    private boolean isSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-        boolean res = false;
+    //private boolean isSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+    //    boolean res = false;
 
-        if (isUpSideButNotCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isRightSideButNotCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isDownSideButNotCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        if (isLeftSideButNotCorner(maxRow, maxCol, i, j)) {
-            res = true;
-        }
-        return res;
-    }
+    //    if (isUpSideButNotCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isRightSideButNotCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isDownSideButNotCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    if (isLeftSideButNotCorner(maxRow, maxCol, i, j)) {
+    //        res = true;
+    //    }
+    //    return res;
+    //}
 
-    private boolean isUpSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-        return ( i == 0 && !isCorner(maxRow, maxCol, i, j) );
-    }
+    //private boolean isUpSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+    //    return ( i == 0 && !isCorner(maxRow, maxCol, i, j) );
+    //}
 
-    private boolean isRightSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-        return ( j == maxCol && !isCorner(maxRow, maxCol, i, j) );
-    }
+    //private boolean isRightSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+    //    return ( j == maxCol && !isCorner(maxRow, maxCol, i, j) );
+    //}
 
-    private boolean isDownSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-        return ( i == maxRow && !isCorner(maxRow, maxCol, i, j) );
-    }
+    //private boolean isDownSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+    //    return ( i == maxRow && !isCorner(maxRow, maxCol, i, j) );
+    //}
 
-    private boolean isLeftSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-        return ( j == 0 && !isCorner(maxRow, maxCol, i, j) );
-    }
+    //private boolean isLeftSideButNotCorner(int maxRow, int maxCol, int i, int j) {
+    //    return ( j == 0 && !isCorner(maxRow, maxCol, i, j) );
+    //}
+//-----------------------------------------------------------------------------
 
     public void autonomousPart() {
         /* send the Cells that are located on the margins of the board to the
@@ -206,7 +223,7 @@ public class Field implements Runnable {
     /*
      * send the margin cells to the neighbors.
      */
-    private void sendMargins() {
+    public void sendMargins() {
         for (int row=0; row < field.length; row++) {
             for (int col=0; col < field[0].length; col++){
                 if ((row == 0) || (row==field.length-1) || (col==0) || 
