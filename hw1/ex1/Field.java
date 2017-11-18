@@ -50,7 +50,7 @@ public class Field implements Runnable {
     public  void printField(int generation) {
         for (int i=0 ; i<field.length ; i++) {
             for (int j=0 ; j<field[0].length ; j++) {
-                boolean b = field[i][j].getCellByGen(generation).isAlive();
+                boolean b = field[i][j].getCellCopyByGen(generation).isAlive();
                 System.out.print((b ? "t " : "f "));
             }
             System.out.println();
