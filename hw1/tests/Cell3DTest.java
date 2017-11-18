@@ -36,6 +36,20 @@ public class Cell3DTest {
         test(c2.getCellCopyByGen(0).isAlive() == false);
         test(c2.getCellCopyByGen(0).getGen() == 0);
 
+        /* getGlobalX() and getGenOfCurrent() test */
+        Cell3D c3 = new Cell3D(false, 4, 3, 2);
+        test(c3.getGenOfCurrent() == 0);
+        test(c3.getGlobalI() == 3);
+        test(c3.getGlobalJ() == 2);
+        c3.addNeighbor(liveCell);
+        c3.addNeighbor(liveCell);
+        c3.addNeighbor(liveCell);
+        c3.addNeighbor(deadCell);
+        test(c3.getGenOfCurrent() == 1);
+        test(c3.getGlobalI() == 3);
+        test(c3.getGlobalJ() == 2);
+
+
         System.out.println("[OK]");
     } 
 

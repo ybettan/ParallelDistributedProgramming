@@ -10,9 +10,12 @@ public class Field implements Runnable {
     private int generations;
     private Neighbors neighbors; 
     private boolean[][][] result; 
-    private final int CORNER_MAX_NEIGHBORS = 3;
-    private final int SIDE_MAX_NEIGHBORS = 5;
-    private final int INTERNAL_MAX_NEIGHBORS = 8;
+    private final int SIDE_MAX_NEIGHBORS_1D = 1;
+    private final int INTERNAL_MAX_NEIGHBORS_1D = 2;
+    private final int CORNER_MAX_NEIGHBORS_2D = 3;
+    private final int SIDE_MAX_NEIGHBORS_2D = 5;
+    private final int INTERNAL_MAX_NEIGHBORS_2D = 8;
+    private final int ERROR_CODE = -1;
     
 
     public Field(boolean[][] initalField, int minI, int maxI, int minJ, 
@@ -35,10 +38,17 @@ public class Field implements Runnable {
     }
 
     @Override public void run() {
+<<<<<<< HEAD
         autonomousPart();
         communicationPart();        
         writeResult();
     }
+=======
+        //autonomusPart();        
+        //communicationPart();        
+        //writeResult();
+    } 
+>>>>>>> devel
 
 //-----------------------------------------------------------------------------
 //                      FIXME:DEBUGGING - remove
@@ -47,7 +57,11 @@ public class Field implements Runnable {
     public  void printField(int generation) {
         for (int i=0 ; i<field.length ; i++) {
             for (int j=0 ; j<field[0].length ; j++) {
+<<<<<<< HEAD
                 boolean b = field[i][j].getCellByGen(generation).isAlive();
+=======
+                boolean b = field[i][j].getCellCopyByGen(0).isAlive();
+>>>>>>> devel
                 System.out.print((b ? "t " : "f "));
             }
             System.out.println();
@@ -62,6 +76,7 @@ public class Field implements Runnable {
 //-----------------------------------------------------------------------------
 //                              private methods
 //-----------------------------------------------------------------------------
+<<<<<<< HEAD
     /*
      * Used to make a copy of the initial field as received. Each field will
      * copy only the relevant parts to him, and create 3D Cells from it.
@@ -69,6 +84,10 @@ public class Field implements Runnable {
      * knows if it is waiting for (3 | 5 | 8) neighbors.
      */
     private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
+=======
+
+    public Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
+>>>>>>> devel
             int maxI, int minJ, int maxJ) {
 
         int numOfRows = maxI - minI + 1;
@@ -80,6 +99,7 @@ public class Field implements Runnable {
             res[i-minI] = new Cell3D[numOfCols];
             for (int j = minJ ; j <= maxJ ; j++) {
                 boolean isAlive = initalField[i][j];
+<<<<<<< HEAD
                 int maxNeighbors;
                 if (isCorner(numOfRows-1, numOfCols-1, i, j)) {
                     maxNeighbors = CORNER_MAX_NEIGHBORS;
@@ -89,10 +109,49 @@ public class Field implements Runnable {
                 } else {
                     maxNeighbors = INTERNAL_MAX_NEIGHBORS;
                 } 
+=======
+                int maxNeighbors = getMaxNeighbors(initalField, minI+i, minJ+j);
+>>>>>>> devel
                 res[i-minI][j-minJ] = new Cell3D(isAlive, maxNeighbors, i, j);
             }
         }
         return res;
+    }
+
+    public int getMaxNeighbors(boolean[][] initalField, int globalI, int globalJ) {
+        
+        int maxRow = initalField.length-1;
+        int maxCol = initalField[0].length-1;
+
+        /* return -1 when go out of the array */
+        if (globalI < 0 || globalI > maxRow || globalJ < 0 || globalJ > maxCol)
+            return ERROR_CODE;
+
+        /* the field is 1D */
+        if (maxRow == 0) {
+            if (globalJ == 0 || globalJ == maxCol)
+                return SIDE_MAX_NEIGHBORS_1D;
+            else
+                return INTERNAL_MAX_NEIGHBORS_1D;
+        }
+        else if (maxCol == 0) {
+            if (globalI == 0 || globalI == maxRow)
+                return SIDE_MAX_NEIGHBORS_1D;
+            else
+                return INTERNAL_MAX_NEIGHBORS_1D;
+        }
+
+        /* the field is 2D */
+        else if ( (globalI == 0 || globalI == maxRow) && 
+                  (globalJ == 0 || globalJ == maxCol)      )
+            return CORNER_MAX_NEIGHBORS_2D;
+
+        else if (globalI==0||globalI==maxRow||globalJ==0||globalJ==maxCol)
+            return SIDE_MAX_NEIGHBORS_2D;
+
+        else
+            return INTERNAL_MAX_NEIGHBORS_2D;
+
     }
 
     private boolean isCorner(int maxRow, int maxCol, int i, int j) {

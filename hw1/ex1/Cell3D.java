@@ -83,4 +83,11 @@ public class Cell3D {
         return currentGen.getGlobalJ();
     }
 
+    /*
+     * return the generation of the cell current status
+     */
+    public int getGenOfCurrent() {
+        return currentGen.getGen();
+    }
+
 }
