@@ -4,7 +4,7 @@ import java.util.Vector;
 
 public class Field implements Runnable {
 
-    private Cell3D[][] field;
+    public Cell3D[][] field;
     private SyncedQueue queue;
     private int numOfDoneCells;
     private int generations;
@@ -176,7 +176,7 @@ public class Field implements Runnable {
      *          2) if the max generation was calculated.
      *          3) if no cell advanced a generation during
      */
-    private void buildPyramid(int minRow, int maxRow, int minCol, int maxCol, 
+    public void buildPyramid(int minRow, int maxRow, int minCol, int maxCol,
             int currentGeneration) {
         // stopping conditions.
         if (currentGeneration == generations) {
@@ -188,13 +188,16 @@ public class Field implements Runnable {
         // limits for next iteration.
         int nextMinRow = -1, nextMaxRow = -1, nextMinCol = -1, nextMaxCol = -1;
 
-        for (int row=minRow; row < maxRow; row++){
-            for (int col=minCol; col < maxCol; col++) {
-                updateCellFromAround(field[row][col],minRow,maxRow,minCol,
+        for (int row=minRow; row < maxRow; row++)
+            for (int col=minCol; col < maxCol; col++)
+                //updateCellFromAround(field[row][col],minRow,maxRow,minCol,
+                sendUpdatesAround(field[row][col],minRow,maxRow,minCol,
                         maxCol,row,col,currentGeneration);
                 // find the first cell that was updated. he is the top 
                 // left corner of the pyramid above.
-                if ((nextMinCol == -1) && 
+            for (int row=minRow; row < maxRow; row++){
+                for (int col=minCol; col < maxCol; col++){
+                    if ((nextMinCol == -1) &&
                         (field[row][col].getCellCopyByGen(currentGeneration+1) != null)) {
                     nextMinCol = col;
                     nextMinRow = row;
