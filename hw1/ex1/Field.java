@@ -317,11 +317,11 @@ public class Field implements Runnable {
     /* update all relevant neighbors recursively for each Cell in queue */
     private void communicationPart() {
 
-        int maxCol = field[0].length-1;
-        int maxRow = field.length-1;
+        int maxCol = field[0].length;
+        int maxRow = field.length;
 
         /* while not all cells have arrived to required generation */
-        while (numOfDoneCells < (maxCol+1) * (maxRow+1)) {
+        while (numOfDoneCells < (maxCol) * (maxRow)) {
            Cell cellFromOtherThread = queue.dequeue();
            recursiveAddNeighbors(cellFromOtherThread);
         }
@@ -387,6 +387,10 @@ public class Field implements Runnable {
      *           around him will also be updated.
      */
     private void recursiveAddNeighbors(Cell c) {
+        // stopping condition. if generation n there is no need to continue
+        // updating.
+        if (c.getGen() == generations)
+            return;
         // step 1. find dependencies.
         Vector<Cell3D> dependencies = getInerDependecies(c);
         for (Cell3D dep : dependencies) {
@@ -403,7 +407,7 @@ public class Field implements Runnable {
                 }
                 int minX = field[0][0].getGlobalJ();
                 int minY = field[0][0].getGlobalI();
-                Cell send = new Cell(dep.getCellCopyByGen(currGen+1));
+                Cell send = dep.getCellCopyByGen(currGen+1);
                 // step 3.2. try to send to neighbor threads.
                 sendToNeighbors(send,send.getGlobalI()-minY,
                         send.getGlobalJ()-minX);
