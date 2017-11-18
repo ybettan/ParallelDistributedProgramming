@@ -216,47 +216,47 @@ public class Field implements Runnable {
                 // look up:
                 if (row > minRow) {
                     field[row][col].addNeighbor(
-                            field[row-1][col].getCellByGen(currentGeneration));
+                            field[row-1][col].getCellCopyByGen(currentGeneration));
                     // look up and left
                     if (col>minCol)
                         field[row][col].addNeighbor(
-                                field[row-1][col-1].getCellByGen(currentGeneration));
+                                field[row-1][col-1].getCellCopyByGen(currentGeneration));
                     // look up and right
                     if (col < maxCol-1)
                         field[row][col].addNeighbor(
-                                field[row-1][col+1].getCellByGen(currentGeneration));
+                                field[row-1][col+1].getCellCopyByGen(currentGeneration));
                 }
                 // look down
                 if (row < maxRow-1) {
                     field[row][col].addNeighbor(
-                            field[row+1][col].getCellByGen(currentGeneration));
+                            field[row+1][col].getCellCopyByGen(currentGeneration));
                     // look down and right
                     if (col < maxCol-1)
                         field[row][col].addNeighbor(
-                                field[row+1][col+1].getCellByGen(currentGeneration));
+                                field[row+1][col+1].getCellCopyByGen(currentGeneration));
                     // look down and left
                     if (col>minCol)
                         field[row][col].addNeighbor(
-                                field[row+1][col-1].getCellByGen(currentGeneration));
+                                field[row+1][col-1].getCellCopyByGen(currentGeneration));
                 }
                 // look left
                 if (col>minCol)
                     field[row][col].addNeighbor(
-                            field[row][col-1].getCellByGen(currentGeneration));
+                            field[row][col-1].getCellCopyByGen(currentGeneration));
                 // look right
                 if (col < maxCol-1)
                     field[row][col].addNeighbor(
-                            field[row][col+1].getCellByGen(currentGeneration));
+                            field[row][col+1].getCellCopyByGen(currentGeneration));
                 // find the first cell that was updated. he is the top 
                 // left corner of the pyramid above.
                 if ((nextMinCol == -1) && 
-                        (field[row][col].getCellByGen(currentGeneration+1) != null)) {
+                        (field[row][col].getCellCopyByGen(currentGeneration+1) != null)) {
                     nextMinCol = col;
                     nextMinRow = row;
                 }
                 // find the last cell that was updated. 
                 // he is the bottom left corner of the pyramid above.
-                if (field[row][col].getCellByGen(currentGeneration+1) != null) {
+                if (field[row][col].getCellCopyByGen(currentGeneration+1) != null) {
                     nextMaxCol = col;
                     nextMaxRow = row;
                 }
@@ -326,18 +326,21 @@ public class Field implements Runnable {
         }
     }
 
+    /*
+     * recursiveAddNeighbors rece
+     */
     private void recursiveAddNeighbors(Cell c) {
 
         Vector<Cell3D> dependencies = getInerDependecies(c);
         for (Cell3D dep : dependencies) {
             int currGen = dep.getCurrentGeneration();
-            dep.addNeighbor(cellFromOtherThread);
+            dep.addNeighbor(c);
             if (currGen+1 == dep.getCurrentGeneration()) {
                 if (currGen+1 == generations) {
                     numOfDoneCells++;
                 }
-                int minX = field[0][0].getGlobalX();
-                int minY = field[0][0].getGlobalY();
+                int minX = field[0][0].getGlobalJ();
+                int minY = field[0][0].getGlobalI();
                 Cell send = new Cell(dep.getCurrentGen());
                 sendToNeighbors(send,send.getGlobalI()-minY,
                         send.getGlobalJ()-minX);
