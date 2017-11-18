@@ -45,7 +45,7 @@ public class Cell3D {
                 currentGen.takeDataFrom(nextGen);
                 nextGen.moveToNextGen();
             }
-        } else {
+        } else if (c.getGen() == nextGen.getGen()){
             /* must be g+1, an exception will be throw at Cell level if not */
             nextGen.addNeighbor(c);
         }

@@ -9,10 +9,9 @@ public class Cell {
     private int gen;
     private int checkedNeighbors;
     private int aliveNeighbors;
-    private boolean wasUpdated;
     // not all cells have 8 neighbors
     private final int MAX_NEIGHBORS;        
-    private final int GLOBAL_I, GLOBAL_J;
+    public int GLOBAL_I, GLOBAL_J;
 
     /*
     C'tor
@@ -22,7 +21,6 @@ public class Cell {
         gen = 0;
         checkedNeighbors = 0;
         aliveNeighbors = 0;
-        wasUpdated = false;
         this.MAX_NEIGHBORS = maxNeighbors;
         this.GLOBAL_I = globalI;
         this.GLOBAL_J = globalJ;
@@ -36,7 +34,6 @@ public class Cell {
         this.gen = ref.gen;
         this.checkedNeighbors = ref.checkedNeighbors;
         this.aliveNeighbors = ref.aliveNeighbors;
-        this.wasUpdated = ref.wasUpdated;
         this.MAX_NEIGHBORS = ref.MAX_NEIGHBORS;
         this.GLOBAL_I = ref.GLOBAL_I;
         this.GLOBAL_J = ref.GLOBAL_J;
@@ -97,9 +94,12 @@ public class Cell {
      */
     public void addNeighbor(Cell c) {
         //FIXME: for debugging - remove when done
-        if (gen != c.gen)
-            System.err.println("asserer faild at line " + 
-                    new Throwable().getStackTrace()[0].getLineNumber());
+        if (gen != c.gen) {
+            System.err.println("asserer failed at line " +
+                    new Throwable().getStackTrace()[0].getLineNumber()
+                    + " By Cell in location (" + GLOBAL_I + "," + GLOBAL_J + ")");
+            return;
+        }
         checkedNeighbors++;
         if (c.isAlive()) {
             aliveNeighbors++;
@@ -121,7 +121,8 @@ public class Cell {
         // FIXME: just for debugging - remove when finish
         if (aliveNeighbors > checkedNeighbors) 
             System.err.println("asserer faild at line " + 
-                    new Throwable().getStackTrace()[0].getLineNumber());
+                    new Throwable().getStackTrace()[0].getLineNumber()
+             + "By Cell in location ("+GLOBAL_I+","+GLOBAL_J+")");
         // update current version
         if (aliveNeighbors == 3 || (aliveNeighbors == 2 && isAlive) ) 
             isAlive = true;

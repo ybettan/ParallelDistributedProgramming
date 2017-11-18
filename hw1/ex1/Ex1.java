@@ -55,7 +55,16 @@ public class Ex1 {
 		}
 		
 		boolean[][][] resultParallel=pGol.invoke(field,hSplit,vSplit, nGenerations);
-		
+		/*
+		System.out.println("Parallel Gen 0:");
+		ParallelGameOfLife.printBoard(resultParallel[0]);
+		System.out.println("Parallel Gen 1:");
+		ParallelGameOfLife.printBoard(resultParallel[1]);
+		System.out.println("Serial Gen 0:");
+		ParallelGameOfLife.printBoard(resultSerial[0]);
+		System.out.println("Serial Gen 1:");
+		ParallelGameOfLife.printBoard(resultSerial[1]);
+*/
 		if (compareArrays(resultParallel[0],resultSerial[0]) && compareArrays(resultParallel[1],resultSerial[1])){
 			System.out.println("Success!");
 		}else{

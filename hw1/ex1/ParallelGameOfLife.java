@@ -147,4 +147,14 @@ public class ParallelGameOfLife implements GameOfLife {
 			}
 		}
 	}
+	public static void printBoard(boolean[][] board) {
+
+		for (int i = 0; i < board.length; i++) {
+			System.out.println("");
+			for (int j = 0; j < board[0].length; j++){
+				System.out.print(board[i][j]? 1 : 0);
+			}
+		}
+		System.out.println("");
+	}
 }

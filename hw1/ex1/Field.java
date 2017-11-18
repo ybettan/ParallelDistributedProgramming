@@ -41,6 +41,7 @@ public class Field implements Runnable {
         autonomousPart();
         communicationPart();
         writeResult();
+        System.out.println("~~Done");
     }
 
 //-----------------------------------------------------------------------------
@@ -48,8 +49,8 @@ public class Field implements Runnable {
 //-----------------------------------------------------------------------------
 
     public  void printField(int generation) {
-        for (int i=0 ; i<field.length ; i++) {
-            for (int j=0 ; j<field[0].length ; j++) {
+        for (int i = 0; i< field.length ; i++) {
+            for (int j = 0; j< field[0].length ; j++) {
                 boolean b = field[i][j].getCellCopyByGen(generation).isAlive();
                 System.out.print((b ? "t " : "f "));
             }
@@ -89,14 +90,12 @@ public class Field implements Runnable {
 
         int numOfRows = maxI - minI + 1;
         int numOfCols = maxJ - minJ + 1;
-        int buttomBoundry = initalField.length;
-        int rightBoundry = initalField[0].length;
         Cell3D[][] res = new Cell3D[numOfRows][];
         for (int i = minI ; i <= maxI ; i++) {
             res[i-minI] = new Cell3D[numOfCols];
             for (int j = minJ ; j <= maxJ ; j++) {
                 boolean isAlive = initalField[i][j];
-                int maxNeighbors = getMaxNeighbors(initalField, minI+i, minJ+j);
+                int maxNeighbors = getMaxNeighbors(initalField, i, j);
                 res[i-minI][j-minJ] = new Cell3D(isAlive, maxNeighbors, i, j);
             }
         }
@@ -140,76 +139,6 @@ public class Field implements Runnable {
     }
 
 //-----------------------------------------------------------------------------
-//                              FIXME: remove?
-//-----------------------------------------------------------------------------
-    //private boolean isCorner(int maxRow, int maxCol, int i, int j) {
-    //    boolean res = false;
-
-    //    if (isUpRightCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isDownRightCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isDownLeftCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isUpLeftCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    return res;
-    //}
-
-    //private boolean isUpRightCorner(int maxRow, int maxCol, int i, int j) {
-    //    return (i == 0 && j == maxCol); 
-    //}
-
-    //private boolean isDownRightCorner(int maxRow, int maxCol, int i, int j) {
-    //    return (i == maxRow && j == maxCol); 
-    //}
-
-    //private boolean isDownLeftCorner(int maxRow, int maxCol, int i, int j) {
-    //    return (i == maxRow && j == 0); 
-    //}
-
-    //private boolean isUpLeftCorner(int maxRow, int maxCol, int i, int j) {
-    //    return (i == 0 && j == 0); 
-    //}
-
-    //private boolean isSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-    //    boolean res = false;
-
-    //    if (isUpSideButNotCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isRightSideButNotCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isDownSideButNotCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    if (isLeftSideButNotCorner(maxRow, maxCol, i, j)) {
-    //        res = true;
-    //    }
-    //    return res;
-    //}
-
-    //private boolean isUpSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-    //    return ( i == 0 && !isCorner(maxRow, maxCol, i, j) );
-    //}
-
-    //private boolean isRightSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-    //    return ( j == maxCol && !isCorner(maxRow, maxCol, i, j) );
-    //}
-
-    //private boolean isDownSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-    //    return ( i == maxRow && !isCorner(maxRow, maxCol, i, j) );
-    //}
-
-    //private boolean isLeftSideButNotCorner(int maxRow, int maxCol, int i, int j) {
-    //    return ( j == 0 && !isCorner(maxRow, maxCol, i, j) );
-    //}
-//-----------------------------------------------------------------------------
 
     public void autonomousPart() {
         /* send the Cells that are located on the margins of the board to the
@@ -224,10 +153,10 @@ public class Field implements Runnable {
      * send the margin cells to the neighbors.
      */
     public void sendMargins() {
-        for (int row=0; row < field.length; row++) {
-            for (int col=0; col < field[0].length; col++){
-                if ((row == 0) || (row==field.length-1) || (col==0) || 
-                        (col==field[0].length-1))
+        for (int row = 0; row < field.length; row++) {
+            for (int col = 0; col < field[0].length; col++){
+                if ((row == 0) || (row== field.length-1) || (col==0) ||
+                        (col== field[0].length-1))
                     sendToNeighbors(field[row][col].getCellCopyByGen(0),row,col);
             }
         }
@@ -251,7 +180,7 @@ public class Field implements Runnable {
             int currentGeneration) {
         // stopping conditions.
         if (currentGeneration == generations) {
-            numOfDoneCells = (maxCol-minCol) * (maxRow-minRow);
+            numOfDoneCells += (maxCol-minCol) * (maxRow-minRow);
             return;
         }
         if ((minRow>=maxRow-1) && (minCol>=maxCol-1))
@@ -261,40 +190,8 @@ public class Field implements Runnable {
 
         for (int row=minRow; row < maxRow; row++){
             for (int col=minCol; col < maxCol; col++) {
-                // look up:
-                if (row > minRow) {
-                    field[row][col].addNeighbor(
-                            field[row-1][col].getCellCopyByGen(currentGeneration));
-                    // look up and left
-                    if (col>minCol)
-                        field[row][col].addNeighbor(
-                                field[row-1][col-1].getCellCopyByGen(currentGeneration));
-                    // look up and right
-                    if (col < maxCol-1)
-                        field[row][col].addNeighbor(
-                                field[row-1][col+1].getCellCopyByGen(currentGeneration));
-                }
-                // look down
-                if (row < maxRow-1) {
-                    field[row][col].addNeighbor(
-                            field[row+1][col].getCellCopyByGen(currentGeneration));
-                    // look down and right
-                    if (col < maxCol-1)
-                        field[row][col].addNeighbor(
-                                field[row+1][col+1].getCellCopyByGen(currentGeneration));
-                    // look down and left
-                    if (col>minCol)
-                        field[row][col].addNeighbor(
-                                field[row+1][col-1].getCellCopyByGen(currentGeneration));
-                }
-                // look left
-                if (col>minCol)
-                    field[row][col].addNeighbor(
-                            field[row][col-1].getCellCopyByGen(currentGeneration));
-                // look right
-                if (col < maxCol-1)
-                    field[row][col].addNeighbor(
-                            field[row][col+1].getCellCopyByGen(currentGeneration));
+                updateCellFromAround(field[row][col],minRow,maxRow,minCol,
+                        maxCol,row,col,currentGeneration);
                 // find the first cell that was updated. he is the top 
                 // left corner of the pyramid above.
                 if ((nextMinCol == -1) && 
@@ -316,14 +213,12 @@ public class Field implements Runnable {
 
     /* update all relevant neighbors recursively for each Cell in queue */
     private void communicationPart() {
-
         int maxCol = field[0].length;
         int maxRow = field.length;
-
         /* while not all cells have arrived to required generation */
-        while (numOfDoneCells < (maxCol) * (maxRow)) {
-           Cell cellFromOtherThread = queue.dequeue();
-           recursiveAddNeighbors(cellFromOtherThread);
+        while (numOfDoneCells < maxCol * maxRow) {
+            Cell cellFromOtherThread = queue.dequeue();
+            recursiveAddNeighbors(cellFromOtherThread);
         }
     }
 
@@ -383,7 +278,8 @@ public class Field implements Runnable {
      *           cell, continue.
      *      3.2) if the neighbor was updated try sending him to the neighbor
      *           threads. (if his not a margin he wont be sent).
-     *      3.3) call recursiveAddNeighbors with the updated cell so cells
+     *      3.3) check and update the cell from relevant cells around.
+     *      3.4) call recursiveAddNeighbors with the updated cell so cells
      *           around him will also be updated.
      */
     private void recursiveAddNeighbors(Cell c) {
@@ -405,17 +301,78 @@ public class Field implements Runnable {
                     numOfDoneCells++;
                     continue;
                 }
+
                 int minX = field[0][0].getGlobalJ();
                 int minY = field[0][0].getGlobalI();
-                Cell send = dep.getCellCopyByGen(currGen+1);
+                Cell cc = dep.getCellCopyByGen(currGen+1);
+                int localRow = cc.getGlobalI() - minY;
+                int localCol = cc.getGlobalJ() - minX;
                 // step 3.2. try to send to neighbor threads.
-                sendToNeighbors(send,send.getGlobalI()-minY,
-                        send.getGlobalJ()-minX);
+                sendToNeighbors(cc,localRow, localCol);
                 // step 3.3. update neighbor cells.
-                recursiveAddNeighbors(send);
+                recursiveAddNeighbors(cc);
             }
         }
-
+    }
+    private void sendUpdatesAround(Cell3D c3d,int minRow, int maxRow,
+                                      int minCol, int maxCol,int row, int col,
+                                      int newGen) {
+        // try to get updated above:
+        if (row > minRow) {
+            field[row-1][col].addNeighbor(c3d.getCellCopyByGen(newGen));
+            // try to update from up left
+            if (col > minCol)
+                field[row-1][col-1].addNeighbor(c3d.getCellCopyByGen(newGen));
+            // try to update from up right
+            if (col < maxCol-1)
+                field[row-1][col+1].addNeighbor(c3d.getCellCopyByGen(newGen));
+        }
+        // try to update from below
+        if (row < maxRow-1){
+            field[row+1][col].addNeighbor(c3d.getCellCopyByGen(newGen));
+            // try to update from down left
+            if (col > minCol)
+                field[row+1][col-1].addNeighbor(c3d.getCellCopyByGen(newGen));
+            // try to update from down right
+            if (col < maxCol-1)
+                field[row+1][col+1].addNeighbor(c3d.getCellCopyByGen(newGen));
+        }
+        // look left
+        if (col > minCol)
+            field[row][col-1].addNeighbor(c3d.getCellCopyByGen(newGen));
+        // look right
+        if (col < maxCol-1)
+            field[row][col+1].addNeighbor(c3d.getCellCopyByGen(newGen));
+    }
+    private void updateCellFromAround(Cell3D c3d,int minRow, int maxRow,
+                                      int minCol, int maxCol,int row, int col,
+                                      int newGen) {
+        // try to get updated from above:
+        if (row > minRow) {
+            c3d.addNeighbor(field[row-1][col].getCellCopyByGen(newGen));
+            // try to update from up left
+            if (col > minCol)
+                c3d.addNeighbor(field[row-1][col-1].getCellCopyByGen(newGen));
+            // try to update from up right
+            if (col < maxCol-1)
+                c3d.addNeighbor(field[row-1][col+1].getCellCopyByGen(newGen));
+        }
+        // try to update from below
+        if (row < maxRow-1){
+            c3d.addNeighbor(field[row+1][col].getCellCopyByGen(newGen));
+            // try to update from down left
+            if (col > minCol)
+                c3d.addNeighbor(field[row+1][col-1].getCellCopyByGen(newGen));
+            // try to update from down right
+            if (col < maxCol-1)
+                c3d.addNeighbor(field[row+1][col+1].getCellCopyByGen(newGen));
+        }
+        // look left
+        if (col > minCol)
+            c3d.addNeighbor(field[row][col-1].getCellCopyByGen(newGen));
+        // look right
+        if (col < maxCol-1)
+            c3d.addNeighbor(field[row][col+1].getCellCopyByGen(newGen));
     }
     /*
      * find all the Cell3D that need the given Cell in order to continue
@@ -446,10 +403,10 @@ public class Field implements Runnable {
             if ((x >= 0) && (x < maxCol))
                 res.addElement(field[y-1][x]);
             // look up and left
-            if ((x > 0) && (x < maxCol))
+            if ((x > 0) && (x <= maxCol))
                 res.addElement(field[y-1][x-1]);
             // look up and right
-            if ((x >=0) && (x < maxCol-1))
+            if ((x >=-1) && (x < maxCol-1))
                 res.addElement(field[y-1][x+1]);
         }
         // look down
@@ -458,33 +415,34 @@ public class Field implements Runnable {
             if ((x >= 0) && (x < maxCol))
                 res.addElement(field[y+1][x]);
 
-            if ((x > 0) && (x < maxCol)) {
+            if ((x > 0) && (x <= maxCol)) {
                 // look down and left
                 res.addElement(field[y + 1][x - 1]);
-                // look directly left
-                if (y >= 0)
-                    res.addElement(field[y][x-1]);
             }
-            if ((x >=0) && (x < maxCol-1)) {
+            if ((x >=-1) && (x < maxCol-1)) {
                 // look down and right
                 res.addElement(field[y + 1][x + 1]);
-                // look directly right
-                if (y >= 0)
-                    res.addElement(field[y][x+1]);
             }
+        }
+
+        if ((y >= 0) && (y < maxRow)){
+            // look directly left
+            if ((x > 0) && (x <= maxCol))
+                res.addElement(field[y][x-1]);
+            // look directly right
+            if ((x >= -1) && (x < maxCol-1))
+                res.addElement(field[y][x+1]);
         }
         return res;
     }
 
     public void writeResult() {
-         
-        int maxCol = field[0].length-1;
-        int maxRow = field.length-1;
-
-        for (int i = 0 ; i <= maxRow ; i++) {
-            for (int j = 0 ; j <= maxCol ; j++) {
-                result[1][i][j] = field[i][j].getCellCopyByGen(generations).isAlive();
-                result[0][i][j] = field[i][j].getCellCopyByGen(generations-1).isAlive();
+        int gX = field[0][0].getGlobalJ();
+        int gY = field[0][0].getGlobalI();
+        for (int i = 0 ; i < field.length ; i++) {
+            for (int j = 0 ; j < field[0].length ; j++) {
+                result[1][i+gY][j+gX] = field[i][j].getCellCopyByGen(generations).isAlive();
+                result[0][i+gY][j+gX] = field[i][j].getCellCopyByGen(generations-1).isAlive();
             }
         }
     }
