@@ -449,7 +449,7 @@ public class Field implements Runnable {
                 res.addElement(field[y-1][x+1]);
         }
         // look down
-        if (y < maxRow){
+        if (y < maxRow-1){
             // look directly down
             if ((x >= 0) && (x < maxCol))
                 res.addElement(field[y+1][x]);
