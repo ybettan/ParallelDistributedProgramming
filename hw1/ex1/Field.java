@@ -38,17 +38,10 @@ public class Field implements Runnable {
     }
 
     @Override public void run() {
-<<<<<<< HEAD
         autonomousPart();
         communicationPart();        
         writeResult();
     }
-=======
-        //autonomusPart();        
-        //communicationPart();        
-        //writeResult();
-    } 
->>>>>>> devel
 
 //-----------------------------------------------------------------------------
 //                      FIXME:DEBUGGING - remove
@@ -57,11 +50,7 @@ public class Field implements Runnable {
     public  void printField(int generation) {
         for (int i=0 ; i<field.length ; i++) {
             for (int j=0 ; j<field[0].length ; j++) {
-<<<<<<< HEAD
                 boolean b = field[i][j].getCellByGen(generation).isAlive();
-=======
-                boolean b = field[i][j].getCellCopyByGen(0).isAlive();
->>>>>>> devel
                 System.out.print((b ? "t " : "f "));
             }
             System.out.println();
@@ -76,18 +65,13 @@ public class Field implements Runnable {
 //-----------------------------------------------------------------------------
 //                              private methods
 //-----------------------------------------------------------------------------
-<<<<<<< HEAD
     /*
      * Used to make a copy of the initial field as received. Each field will
      * copy only the relevant parts to him, and create 3D Cells from it.
      * While Creating the 3D Cell, the global location is passed, hence the Cell
      * knows if it is waiting for (3 | 5 | 8) neighbors.
      */
-    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
-=======
-
     public Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
->>>>>>> devel
             int maxI, int minJ, int maxJ) {
 
         int numOfRows = maxI - minI + 1;
@@ -99,19 +83,7 @@ public class Field implements Runnable {
             res[i-minI] = new Cell3D[numOfCols];
             for (int j = minJ ; j <= maxJ ; j++) {
                 boolean isAlive = initalField[i][j];
-<<<<<<< HEAD
-                int maxNeighbors;
-                if (isCorner(numOfRows-1, numOfCols-1, i, j)) {
-                    maxNeighbors = CORNER_MAX_NEIGHBORS;
-                } else if (isSideButNotCorner(numOfRows-1,
-                        numOfCols-1, i, j)) {
-                    maxNeighbors = SIDE_MAX_NEIGHBORS;
-                } else {
-                    maxNeighbors = INTERNAL_MAX_NEIGHBORS;
-                } 
-=======
                 int maxNeighbors = getMaxNeighbors(initalField, minI+i, minJ+j);
->>>>>>> devel
                 res[i-minI][j-minJ] = new Cell3D(isAlive, maxNeighbors, i, j);
             }
         }
