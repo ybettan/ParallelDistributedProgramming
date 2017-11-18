@@ -8,7 +8,7 @@ public class Field implements Runnable {
     private SyncedQueue queue;
     private int numOfDoneCells;
     private int generations;
-    private Neighbors neighbors; 
+    private Neighbors neighbors;
     private boolean[][][] result; 
     private final int SIDE_MAX_NEIGHBORS_1D = 1;
     private final int INTERNAL_MAX_NEIGHBORS_1D = 2;
@@ -16,9 +16,9 @@ public class Field implements Runnable {
     private final int SIDE_MAX_NEIGHBORS_2D = 5;
     private final int INTERNAL_MAX_NEIGHBORS_2D = 8;
     private final int ERROR_CODE = -1;
-    
 
-    public Field(boolean[][] initalField, int minI, int maxI, int minJ, 
+
+    public Field(boolean[][] initalField, int minI, int maxI, int minJ,
             int maxJ, int generations, boolean[][][] result) {
         this.field = createPartialCopy(initalField, minI, maxI, minJ, maxJ);
         queue = new SyncedQueue();
@@ -26,7 +26,7 @@ public class Field implements Runnable {
         this.generations = generations;
         this.result = result;
     }
-    
+
     /* receive as input all Field neighbors, Field is the owner of this data */
     public void setNeighbors(Neighbors neighbors) {
         this.neighbors = neighbors;
@@ -39,7 +39,7 @@ public class Field implements Runnable {
 
     @Override public void run() {
         autonomousPart();
-        communicationPart();        
+        communicationPart();
         writeResult();
     }
 
@@ -71,7 +71,7 @@ public class Field implements Runnable {
      * While Creating the 3D Cell, the global location is passed, hence the Cell
      * knows if it is waiting for (3 | 5 | 8) neighbors.
      */
-    public Cell3D[][] createPartialCopy(boolean[][] initalField, int minI, 
+    public Cell3D[][] createPartialCopy(boolean[][] initalField, int minI,
             int maxI, int minJ, int maxJ) {
 
         int numOfRows = maxI - minI + 1;
@@ -91,7 +91,7 @@ public class Field implements Runnable {
     }
 
     public int getMaxNeighbors(boolean[][] initalField, int globalI, int globalJ) {
-        
+
         int maxRow = initalField.length-1;
         int maxCol = initalField[0].length-1;
 
@@ -114,8 +114,8 @@ public class Field implements Runnable {
         }
 
         /* the field is 2D */
-        else if ( (globalI == 0 || globalI == maxRow) && 
-                  (globalJ == 0 || globalJ == maxCol)      )
+        else if ( (globalI == 0 || globalI == maxRow) &&
+                (globalJ == 0 || globalJ == maxCol)      )
             return CORNER_MAX_NEIGHBORS_2D;
 
         else if (globalI==0||globalI==maxRow||globalJ==0||globalJ==maxCol)
@@ -211,7 +211,7 @@ public class Field implements Runnable {
             for (int col=0; col < field[0].length; col++){
                 if ((row == 0) || (row==field.length-1) || (col==0) || 
                         (col==field[0].length-1))
-                    sendToNeighbors(field[row][col].getCellByGen(0),row,col);
+                    sendToNeighbors(field[row][col].getCellCopyByGen(0),row,col);
             }
         }
     }
@@ -358,44 +358,66 @@ public class Field implements Runnable {
     }
 
     /*
-     * recursiveAddNeighbors rece
+     * recursiveAddNeighbors receive a cell and does the following steps:
+     * 1) finds all the Cell3D that are neighbors and belong to the same thread.
+     * 2) updates the neighbors of the cell.
+     * 3) if a neighbor was updated.
+     *      3.1) if his generation is the target generation, no body needs the
+     *           cell, continue.
+     *      3.2) if the neighbor was updated try sending him to the neighbor
+     *           threads. (if his not a margin he wont be sent).
+     *      3.3) call recursiveAddNeighbors with the updated cell so cells
+     *           around him will also be updated.
      */
     private void recursiveAddNeighbors(Cell c) {
-
+        // step 1. find dependencies.
         Vector<Cell3D> dependencies = getInerDependecies(c);
         for (Cell3D dep : dependencies) {
-            int currGen = dep.getCurrentGeneration();
+            // get the current generation, use to check if cell advanced.
+            int currGen = dep.getGenOfCurrent();
+            // step 2. update the cell.
             dep.addNeighbor(c);
-            if (currGen+1 == dep.getCurrentGeneration()) {
+            // step 3. if the cell was updated.
+            if (currGen+1 == dep.getGenOfCurrent()) {
+                // step 3.1. if we got to the final generation
                 if (currGen+1 == generations) {
                     numOfDoneCells++;
+                    continue;
                 }
                 int minX = field[0][0].getGlobalJ();
                 int minY = field[0][0].getGlobalI();
-                Cell send = new Cell(dep.getCurrentGen());
+                Cell send = new Cell(dep.getCellCopyByGen(currGen+1));
+                // step 3.2. try to send to neighbor threads.
                 sendToNeighbors(send,send.getGlobalI()-minY,
                         send.getGlobalJ()-minX);
-                recursiveAddNeighbors(dep.getCurrentCopy());
+                // step 3.3. update neighbor cells.
+                recursiveAddNeighbors(send);
             }
         }
 
     }
-    /* find all the Cell3D that need the given Cell in order to continue
+    /*
+     * find all the Cell3D that need the given Cell in order to continue
      * computing their generations.
      */
     private Vector<Cell3D> getInerDependecies(Cell c) {
 
         Cell3D minLimit = field[0][0];
-        Cell3D maxLimit = field[field.length-1][field[0].length-1];
-        int minX = minLimit.getGlobalX();
-        int minY = minLimit.getGlobalY();
+        // global top left corner of the threads field.
+        int minX = minLimit.getGlobalJ();
+        int minY = minLimit.getGlobalI();
+        // cells location in the global board, in the threads point of view.
         int y = c.getGlobalI() - minY;
         int x = c.getGlobalJ() - minX;
         int maxCol = field[0].length;
         int maxRow = field.length;
+
         Vector<Cell3D> res = new Vector<>();
-        if ((y < -1) || (x < -1) || (y > maxRow) || (x > maxCol))
+        //x and y are relevant only if x is in [-1..maxCol] y is in [-1..maxRow]
+        if ((y < -1) || (x < -1) || (y > maxRow) || (x > maxCol)) {
             System.err.println("ERROR getInerDependecies: bad dimensions for dependencies ");
+            return res;
+        }
 
         // look up
         if (y > 0) {
@@ -440,10 +462,9 @@ public class Field implements Runnable {
 
         for (int i = 0 ; i <= maxRow ; i++) {
             for (int j = 0 ; j <= maxCol ; j++) {
-                result[1][i][j] = field[i][j].getCellByGen(generations).isAlive();
-                result[0][i][j] = field[i][j].getCellByGen(generations-1).isAlive();
+                result[1][i][j] = field[i][j].getCellCopyByGen(generations).isAlive();
+                result[0][i][j] = field[i][j].getCellCopyByGen(generations-1).isAlive();
             }
         }
     }
-
 }
