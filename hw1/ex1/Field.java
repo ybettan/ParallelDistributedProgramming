@@ -4,7 +4,7 @@ import java.util.Vector;
 
 public class Field implements Runnable {
 
-    private Cell3D[][] field;
+    private Cell3D[][] field; 
     private SyncedQueue queue;
     private int numOfDoneCells;
     private int generations;
@@ -441,7 +441,7 @@ public class Field implements Runnable {
         return res;
     }
 
-    public void writeResult() {
+    private void writeResult() {
         int gX = field[0][0].getGlobalJ();
         int gY = field[0][0].getGlobalI();
         for (int i = 0 ; i < field.length ; i++) {
