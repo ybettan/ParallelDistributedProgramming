@@ -77,7 +77,7 @@ public class Field implements Runnable {
     }
 
 //-----------------------------------------------------------------------------
-//                              private methods
+//                              private methods //FIXME: make private
 //-----------------------------------------------------------------------------
     /*
      * Used to make a copy of the initial field as received. Each field will
@@ -285,7 +285,7 @@ public class Field implements Runnable {
      *      3.4) call recursiveAddNeighbors with the updated cell so cells
      *           around him will also be updated.
      */
-    private void recursiveAddNeighbors(Cell c) {
+    public void recursiveAddNeighbors(Cell c) {
         // stopping condition. if generation n there is no need to continue
         // updating.
         if (c.getGen() == generations)

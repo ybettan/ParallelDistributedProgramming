@@ -63,15 +63,15 @@ public class FieldPrivateTest {
             }
 
         /* constructor and createPartialCopy()  */
-        Field f10 = new Field(initalField1, 0, 1, 0, 1, 1, resultField1);
-        Field f11 = new Field(initalField1, 0, 1, 2, 3, 1, resultField1);
-        Field f12 = new Field(initalField1, 0, 1, 4, 5, 1, resultField1);
-        Field f13 = new Field(initalField1, 2, 3, 0, 1, 1, resultField1);
-        Field f14 = new Field(initalField1, 2, 3, 2, 3, 1, resultField1);
-        Field f15 = new Field(initalField1, 2, 3, 4, 5, 1, resultField1);
-        Field f16 = new Field(initalField1, 4, 5, 0, 1, 1, resultField1);
-        Field f17 = new Field(initalField1, 4, 5, 2, 3, 1, resultField1);
-        Field f18 = new Field(initalField1, 4, 5, 4, 5, 1, resultField1);
+        Field f10 = new Field(initalField1, 0, 1, 0, 1, 3, resultField1);
+        Field f11 = new Field(initalField1, 0, 1, 2, 3, 3, resultField1);
+        Field f12 = new Field(initalField1, 0, 1, 4, 5, 3, resultField1);
+        Field f13 = new Field(initalField1, 2, 3, 0, 1, 3, resultField1);
+        Field f14 = new Field(initalField1, 2, 3, 2, 3, 3, resultField1);
+        Field f15 = new Field(initalField1, 2, 3, 4, 5, 3, resultField1);
+        Field f16 = new Field(initalField1, 4, 5, 0, 1, 3, resultField1);
+        Field f17 = new Field(initalField1, 4, 5, 2, 3, 3, resultField1);
+        Field f18 = new Field(initalField1, 4, 5, 4, 5, 3, resultField1);
 
         //System.out.println("initalField1");
         //f10.printField();
@@ -88,10 +88,10 @@ public class FieldPrivateTest {
         Field f21 = new Field(initalField2, 0, 0, 2, 3, 8, resultField2);
         Field f22 = new Field(initalField2, 0, 0, 4, 5, 8, resultField2);
 
-        //System.out.println("initalField2");
-        //f20.printField();
-        //f21.printField();
-        //f22.printField();
+        ////System.out.println("initalField2");
+        ////f20.printField();
+        ////f21.printField();
+        ////f22.printField();
 
         Field f30 = new Field(initalField3, 0, 0, 0, 0, 4, resultField3);
         Field f31 = new Field(initalField3, 1, 1, 0, 0, 4, resultField3);
@@ -175,6 +175,8 @@ public class FieldPrivateTest {
         test(f44.areEqualCells(f45.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
         test(f44.areEqualCells(f47.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
         test(f44.areEqualCells(f48.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
+
+        /* recursiveAddNeighbors() test */
 
         System.out.println("[OK]");
     } 
