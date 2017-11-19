@@ -176,7 +176,14 @@ public class FieldPrivateTest {
         test(f44.areEqualCells(f47.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
         test(f44.areEqualCells(f48.getQueue().dequeue(), f44.getCellCopyByGen(1, 1, 0)));
 
-        /* recursiveAddNeighbors() test */
+        /* buildPyramid() test */
+        Field f50_left = new Field(initalField1, 0, 5, 0, 2, 5, resultField1);
+        Field f50_right = new Field(initalField1, 0, 5, 3, 5, 5, resultField1); 
+        f50_left.setNeighbors(new Neighbors(null, null, f50_right, null, null, null, null, null));
+        f50_right.setNeighbors(new Neighbors(null, null, null, null, null, null, f50_left, null));
+
+        f50_left.run();
+        f50_right.run();
 
         System.out.println("[OK]");
     } 

@@ -7,11 +7,11 @@ public class Cell {
 
     private boolean isAlive;
     private int gen;
-    private int checkedNeighbors;
-    private int aliveNeighbors;
+    public int checkedNeighbors; //FIXME make private
+    public int aliveNeighbors;   //FIXME make private
     // not all cells have 8 neighbors
-    private final int MAX_NEIGHBORS;        
-    public int GLOBAL_I, GLOBAL_J;
+    public final int MAX_NEIGHBORS; //FIXME make private        
+    public int GLOBAL_I, GLOBAL_J; //FIXME: make private
 
     /*
     C'tor
