@@ -4,7 +4,7 @@ import java.util.Vector;
 
 public class Field implements Runnable {
 
-    public Cell3D[][] field; //FIXME: make private
+    private Cell3D[][] field;
     private SyncedQueue queue;
     private int numOfDoneCells;
     private int generations;
@@ -43,62 +43,9 @@ public class Field implements Runnable {
         writeResult();
     }
 
-//-----------------------------------------------------------------------------
-//                      FIXME:DEBUGGING - remove
-//-----------------------------------------------------------------------------
-
-    public  void printField(int generation) {
-        for (int i = 0; i< field.length ; i++) {
-            for (int j = 0; j< field[0].length ; j++) {
-                boolean b = field[i][j].getCellCopyByGen(generation).isAlive();
-                System.out.print((b ? "t " : "f "));
-            }
-            System.out.println();
-        }
-        System.out.println();
-    }
-
-    public Neighbors getNeighbors() {
-        return neighbors;
-    }
-
-    public Cell getCellCopyByGen(int i, int j, int gen) {
-        return field[i][j].getCellCopyByGen(gen);    
-    }
-
-    public void printCell(Cell c) {
-        System.out.println("isAlive = " + c.isAlive());
-        System.out.println("gen = " + c.getGen());
-        System.out.println("added neighbors = " + c.checkedNeighbors);
-    }
-
-    public void printCell3D(Cell3D c3d) {
-        System.out.println();
-        System.out.println("(" + c3d.getGlobalI() + "," + c3d.getGlobalJ() + ")");
-        System.out.println("gen = " + c3d.currentGen.getGen());
-        System.out.println("c.c = " + c3d.currentGen.checkedNeighbors);
-        System.out.println("n.c = " + c3d.nextGen.checkedNeighbors);
-        System.out.println("max = " + c3d.currentGen.MAX_NEIGHBORS);
-    }
-
-    public void printField2() {
-        System.out.println();
-        for (int i = 0; i< field.length ; i++) {
-            for (int j = 0; j< field[0].length ; j++) {
-                printCell3D(field[i][j]);
-            }
-            System.out.println();
-        }
-        System.out.println();
-        //System.exit(1);
-    }
-
-    public boolean areEqualCells(Cell c1, Cell c2) {
-        return (c1.isAlive() == c2.isAlive() && c1.getGen() == c2.getGen());
-    }
 
 //-----------------------------------------------------------------------------
-//                              private methods //FIXME: make private
+//                              private methods 
 //-----------------------------------------------------------------------------
     /*
      * Used to make a copy of the initial field as received. Each field will
@@ -106,7 +53,7 @@ public class Field implements Runnable {
      * While Creating the 3D Cell, the global location is passed, hence the Cell
      * knows if it is waiting for (3 | 5 | 8) neighbors.
      */
-    public Cell3D[][] createPartialCopy(boolean[][] initalField, int minI,
+    private Cell3D[][] createPartialCopy(boolean[][] initalField, int minI,
             int maxI, int minJ, int maxJ) {
 
         int numOfRows = maxI - minI + 1;
@@ -123,7 +70,7 @@ public class Field implements Runnable {
         return res;
     }
 
-    public int getMaxNeighbors(boolean[][] initalField, int globalI, int globalJ) {
+    private int getMaxNeighbors(boolean[][] initalField, int globalI, int globalJ) {
 
         int maxRow = initalField.length-1;
         int maxCol = initalField[0].length-1;
@@ -159,9 +106,8 @@ public class Field implements Runnable {
 
     }
 
-//-----------------------------------------------------------------------------
 
-    public void autonomousPart() {
+    private void autonomousPart() {
         /* send the Cells that are located on the margins of the board to the
         to the threads that will wait or are waiting for it. */
         sendMargins();
@@ -173,7 +119,7 @@ public class Field implements Runnable {
     /*
      * send the margin cells to the neighbors.
      */
-    public void sendMargins() {
+    private void sendMargins() {
         for (int row = 0; row < field.length; row++) {
             for (int col = 0; col < field[0].length; col++){
                 if ((row == 0) || (row== field.length-1) || (col==0) ||
@@ -197,21 +143,15 @@ public class Field implements Runnable {
      *          2) if the max generation was calculated.
      *          3) if no cell advanced a generation during
      */
-    public void buildPyramid(int minRow, int maxRow, int minCol, int maxCol,
+    private void buildPyramid(int minRow, int maxRow, int minCol, int maxCol,
             int currentGeneration) {
         // we have reached the required generation
         if (currentGeneration == generations) {
             numOfDoneCells += (maxCol-minCol) * (maxRow-minRow);
-            //System.err.println("we have reached max generation"); //FIXME:remove
             return;
         }
         // if we have reached a 1x1 board
         if ((minRow>=maxRow-1) && (minCol>=maxCol-1)) {
-            //System.err.println("we have reached a 1x1 board"); //FIXME:remove
-            //System.err.println("minRow = " + minRow); //FIXME:remove
-            //System.err.println("maxRow = " + maxRow); //FIXME:remove
-            //System.err.println("minCol = " + minCol); //FIXME:remove
-            //System.err.println("maxCol = " + maxCol); //FIXME:remove
             return;
         }
 
@@ -243,7 +183,6 @@ public class Field implements Runnable {
         }
         // we cannot go smaller
         if (nextMinRow==-1 && nextMaxRow==-1 && nextMinCol==-1 && nextMaxCol==-1) {
-            //System.err.println("we cannot go smaller"); //FIXME:remove
             return;
         }
         buildPyramid(nextMinRow, nextMaxRow+1, nextMinCol,
@@ -260,12 +199,6 @@ public class Field implements Runnable {
                         }
             }
         }
-       // printField2();                      //FIXME: remove
-       // System.err.println("----------generation "+currentGeneration+"-----------"); //FIXME:remove
-        //System.err.println("current generation = "+currentGeneration); //FIXME:remove
-       // if (currentGeneration == 0) {           //FIXME: remove
-       //     System.exit(1);
-       // }                                       //FIXME: remove
     }
 
     /* update all relevant neighbors recursively for each Cell in queue */
@@ -339,7 +272,7 @@ public class Field implements Runnable {
      *      3.4) call recursiveAddNeighbors with the updated cell so cells
      *           around him will also be updated.
      */
-    public void recursiveAddNeighbors(Cell c) {
+    private void recursiveAddNeighbors(Cell c) {
         // stopping condition. if generation n there is no need to continue
         // updating.
         if (c.getGen() == generations)
@@ -373,14 +306,13 @@ public class Field implements Runnable {
     }
     private void sendUpdatesDownPyramid(Cell3D c3d,int minRow, int maxRow,
                                       int minCol, int maxCol,int row, int col) {
-        //System.err.println("sendUpdatesAround() of ("+row+","+col+") when (minRow,maxRow) = ("+minRow+","+maxRow+") and (minCol,maxCol) = ("+minCol+","+maxCol+")"); //FIXME:remove
         // try to get updated above:
         if (row > minRow) {
             if (c3d.getGenOfCurrent() == field[row-1][col].getGenOfCurrent()+1) {
                 field[row-1][col].addNeighbor(c3d.getCellCopyByGen(c3d.getGenOfCurrent()));
             }
             // try to update from up left
-            if (col > minCol) //FIXME:make it prityer
+            if (col > minCol) 
                 if (c3d.getGenOfCurrent() == field[row-1][col-1].getGenOfCurrent()+1) {
                     field[row-1][col-1].addNeighbor(c3d.getCellCopyByGen(c3d.getGenOfCurrent()));
                 }

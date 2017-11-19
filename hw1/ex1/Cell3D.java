@@ -6,9 +6,9 @@ package ex1;
  */
 public class Cell3D {
 
-    public Cell nextGen;   //FIXME: make private
-    public Cell currentGen;//FIXME: make private
-    public Cell previousGen;//FIXME: make private
+    private Cell nextGen;   
+    private Cell currentGen;
+    private Cell previousGen;
 
     /*
     C'tor
@@ -39,7 +39,6 @@ public class Cell3D {
         /* if this.getGet() == g than c.getGen() == {g, g+1} */
         if (c.getGen() == currentGen.getGen()) {
             currentGen.addNeighbor(c);
-            //System.err.println("("+getGlobalI()+","+getGlobalJ()+").current++"); //FIXME:remove
             if (currentGen.needUpdate()) {
                 previousGen = new Cell(currentGen);
                 currentGen.moveToNextGen();
@@ -48,7 +47,6 @@ public class Cell3D {
             }
         } else if (c.getGen() == nextGen.getGen()){
             /* must be g+1, an exception will be throw at Cell level if not */
-            //System.err.println("("+getGlobalI()+","+getGlobalJ()+").next++"); //FIXME:remove
             nextGen.addNeighbor(c);
         }
     }
