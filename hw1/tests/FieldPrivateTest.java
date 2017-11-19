@@ -17,11 +17,11 @@ public class FieldPrivateTest {
                                      {false, false, true, true, false, false},
                                      {false, false, true, true, false, false} };
 
-        boolean[][] initalField2 = { {false, false, true, true, false, false} };
+        boolean[][] initalField2 = { {true, true, true, true, true, true} };
                                     
-        boolean[][] initalField3 = { {false},
+        boolean[][] initalField3 = { {true},
                                      {true},
-                                     {false},
+                                     {true},
                                      {true} };
 
         boolean[][] initalField4 = { {false, true, true, true, false, false},
@@ -182,8 +182,63 @@ public class FieldPrivateTest {
         f50_left.setNeighbors(new Neighbors(null, null, f50_right, null, null, null, null, null));
         f50_right.setNeighbors(new Neighbors(null, null, null, null, null, null, f50_left, null));
 
-        f50_left.run();
-        f50_right.run();
+        /* run test */
+        Field f61 = new Field(initalField3, 0, 0, 0, 0, 2, resultField3);
+        Field f62 = new Field(initalField3, 1, 1, 0, 0, 2, resultField3);
+        Field f63 = new Field(initalField3, 2, 2, 0, 0, 2, resultField3);
+        Field f64 = new Field(initalField3, 3, 3, 0, 0, 2, resultField3);
+
+        f61.setNeighbors(new Neighbors(null, null, null, null, f62, null, null, null));
+        f62.setNeighbors(new Neighbors(f61, null, null, null, f63, null, null, null));
+        f63.setNeighbors(new Neighbors(f62, null, null, null, f64, null, null, null));
+        f64.setNeighbors(new Neighbors(f63, null, null, null, null, null, null, null));
+
+        Thread t61 = new Thread(f61);
+        Thread t62 = new Thread(f62);
+        Thread t63 = new Thread(f63);
+        Thread t64 = new Thread(f64);
+
+        t61.start();
+        t62.start();
+        t63.start();
+        t64.start();
+
+        try {
+            t61.join();
+            t62.join();
+            t63.join();
+            t64.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+        Field f71 = new Field(initalField2, 0, 0, 0, 1, 2, resultField2);
+        Field f72 = new Field(initalField2, 0, 0, 2, 3, 2, resultField2);
+        Field f73 = new Field(initalField2, 0, 0, 4, 5, 2, resultField2);
+
+        f71.setNeighbors(new Neighbors(null, null, f72, null, null, null, null, null));
+        f72.setNeighbors(new Neighbors(null, null, f73, null, null, null, f71, null));
+        f73.setNeighbors(new Neighbors(null, null, null, null, null, null, f72, null));
+
+        Thread t71 = new Thread(f71);
+        Thread t72 = new Thread(f72);
+        Thread t73 = new Thread(f73);
+
+        t71.start();
+        t72.start();
+        t73.start();
+
+
+
+        System.out.println("generation 1");
+        f71.printField(1);
+        f72.printField(1);
+        f73.printField(1);
+
+        System.out.println("generation 2");
+        f71.printField(2);
+        f72.printField(2);
+        f73.printField(2);
 
         System.out.println("[OK]");
     } 
