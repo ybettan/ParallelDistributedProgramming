@@ -60,6 +60,38 @@ void simple_parallel_walsh(register int* vec, register int vecSize)
 }
 
 //-----------------------------------------------------------------------------
+//                           part A - Alon
+//-----------------------------------------------------------------------------
+
+//#define IS_EVEN_MASK  0x1
+//#define GET_SIGN(n) ((((!__builtin_popcount((n))) & IS_EVEN_MASK) << 1) - 1)
+//
+//void simple_parallel_walsh(int* vec, int vecSize)
+//{
+//    int* initVec = (int*) malloc(vecSize * sizeof(int));
+//#pragma omp parallel
+//    {
+//        register unsigned i;
+//        /* copy the initial vector so each thread can calculate using it.
+//         * reset the vec, so we can start writing in to it calculations. */
+//#pragma omp for schedule(static)
+//        for (i=0; i<(unsigned)vecSize; ++i) {
+//            initVec[i] = vec[i];
+//            vec[i] = 0;
+//        }
+//#pragma omp for schedule(static)
+//        for (i=0; i<(unsigned)vecSize; ++i) {
+//            register unsigned j, n;
+//            for ( j=0; j<(unsigned)vecSize; ++j) {
+//                n = j&i;
+//                vec[i] += GET_SIGN(n) * initVec[j];
+//            }
+//        }
+//    }
+//    free (initVec);
+//}
+
+//-----------------------------------------------------------------------------
 //                                part B
 //-----------------------------------------------------------------------------
 
