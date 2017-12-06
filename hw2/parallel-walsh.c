@@ -2,18 +2,22 @@
 #include <stdlib.h>
 #include <omp.h>
 
+
 //FIXME: can we remove some includes?
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <smmintrin.h>
+//#include <x86intrin.h>  // FIXME: no need for this
 
-
+#define GET_VAL(i, col) -(((__builtin_popcount((i) & (col)) & 1) << 1)-1)
+#define OLD_GET_VAL(i, col) -(((set_bits_num((i) & (col)) & 1) << 1)-1)
 
 //-----------------------------------------------------------------------------
 //                                part A
 //-----------------------------------------------------------------------------
-//
+
 // We use uint32_t because of shifting problems with signed
 int set_bits_num(register uint32_t i) {
     i = i - ((i >> 1) & 0x55555555);
@@ -29,7 +33,8 @@ int set_bits_num(register uint32_t i) {
 int* generate_hadamard_matrix_column(register int size, register int col) {
 	register int* whtColumn = (int*) malloc(size*sizeof(int));
     for(register int i=0; i<size; i++) {
-    	whtColumn[i] = (set_bits_num(i & col) % 2 == 0) ? 1 : -1;
+    	whtColumn[i] = OLD_GET_VAL(i, col);
+    	//whtColumn[i] = GET_VAL(i, col);
     }
     return whtColumn;
 }
@@ -69,7 +74,7 @@ void simple_parallel_walsh(register int* vec, register int vecSize)
 void serial_fast_walsh(register int* vec, register int vecSize){
 
     // First half of the vector
-    register int halfVecSize=vecSize/2;
+    register int halfVecSize = vecSize >> 1;
     for(register int i=0;i<halfVecSize; i++){
         vec[i] =vec[i] + vec[i+halfVecSize];
     }
@@ -108,7 +113,7 @@ void fast_parallel_walsh_vec_generator(register int* vec,
 		register int vecSize, register int numOfThreads) {
 
 	register int switchSize = vecSize / numOfThreads;
-#pragma omp parallel shared(vec, vecSize, switchSize)
+    #pragma omp parallel shared(vec, vecSize, switchSize)
 	{
 		register int currentVecSize;
 		for (currentVecSize = vecSize; currentVecSize > switchSize; (currentVecSize >>= 1)){
@@ -163,13 +168,12 @@ void fast_parallel_walsh(register int *vec, register int vecSize) {
         return;
     }
 
-#pragma omp parallel
+    #pragma omp parallel
 	{
         register int threadIdx = omp_get_thread_num();
         // Each thread calls to serial_fast_walsh with his private vector
         //	located inside "vec"
-        serial_fast_walsh(vec + threadIdx *vecSizeOfThread,
-        		vecSizeOfThread);
+        serial_fast_walsh(vec + threadIdx *vecSizeOfThread,	vecSizeOfThread);
 	}
 }
 
