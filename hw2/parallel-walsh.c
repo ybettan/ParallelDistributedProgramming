@@ -3,60 +3,45 @@
 #include <omp.h>
 
 
+#define GET_VAL(i, col) -(((__builtin_popcount((i) & (col)) & 1) << 1)-1)
+
+#define L1_SIZE 32 << 12
+#define L2_SIZE 256 << 12
+#define CHUNK_SIZE (L1_SIZE>>1) >> 2
+
+
+
 //FIXME: can we remove some includes?
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
 #include <smmintrin.h>
-//#include <x86intrin.h>  // FIXME: no need for this
 
-#define GET_VAL(i, col) -(((__builtin_popcount((i) & (col)) & 1) << 1)-1)
+//FIXME: remove old one
 #define OLD_GET_VAL(i, col) -(((set_bits_num((i) & (col)) & 1) << 1)-1)
+
 
 //-----------------------------------------------------------------------------
 //                                part A
 //-----------------------------------------------------------------------------
 
-// We use uint32_t because of shifting problems with signed
-int set_bits_num(register uint32_t i) {
-    i = i - ((i >> 1) & 0x55555555);
-    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-    return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-}
-
-/* FIXME: can we use instead x86 popcnt command?
- *        we can make a table of all possibilities if we have large cache?
- *        can we assume 32bits\64bits? */
-
-/* this code whas taken from stack-overflow */
-int* generate_hadamard_matrix_column(register int size, register int col) {
-	register int* whtColumn = (int*) malloc(size*sizeof(int));
-    for(register int i=0; i<size; i++) {
-    	whtColumn[i] = OLD_GET_VAL(i, col);
-    	//whtColumn[i] = GET_VAL(i, col);
-    }
-    return whtColumn;
-}
 
 void simple_parallel_walsh(register int* vec, register int vecSize)
 {
 	// copy vector into main thread mem
-    register int* lclCpyVec = (int*) malloc(vecSize*sizeof(int));
-    memcpy(lclCpyVec, vec, vecSize*sizeof(int));
+    register int* vecCopy = (int*)malloc(vecSize*sizeof(int));
+    memcpy(vecCopy, vec, vecSize*sizeof(int));
 
-    // FIXME: does chunk_size != 1 (default) improve performece?
 	#pragma omp parallel for schedule(dynamic)
-    for( register int i=0;i<vecSize;i++) {
-    	register int* whtColumn = generate_hadamard_matrix_column(vecSize, i);
-    	register int mulSum = 0;
-        for(register int j=0; j < vecSize; j++) {
-            mulSum += whtColumn[j] * lclCpyVec[j];
+    for (register int i=0 ; i<vecSize ; i++) {
+    	register int sum = 0;
+        for(register int j=0 ; j < vecSize ; j++) {
+            sum += GET_VAL(i, j) * vecCopy[j];
         }
-        vec[i] = mulSum;
-        free(whtColumn);
+        vec[i] = sum;
     }
-    free(lclCpyVec);
+    free(vecCopy);
 }
 
 //-----------------------------------------------------------------------------
