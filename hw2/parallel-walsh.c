@@ -44,42 +44,10 @@ void simple_parallel_walsh(register int* vec, register int vecSize)
     free(vecCopy);
 }
 
-//-----------------------------------------------------------------------------
-//                           part A - Alon
-//-----------------------------------------------------------------------------
-
-//#define IS_EVEN_MASK  0x1
-//#define GET_SIGN(n) ((((!__builtin_popcount((n))) & IS_EVEN_MASK) << 1) - 1)
-//
-//void simple_parallel_walsh(int* vec, int vecSize)
-//{
-//    int* initVec = (int*) malloc(vecSize * sizeof(int));
-//#pragma omp parallel
-//    {
-//        register unsigned i;
-//        /* copy the initial vector so each thread can calculate using it.
-//         * reset the vec, so we can start writing in to it calculations. */
-//#pragma omp for schedule(static)
-//        for (i=0; i<(unsigned)vecSize; ++i) {
-//            initVec[i] = vec[i];
-//            vec[i] = 0;
-//        }
-//#pragma omp for schedule(static)
-//        for (i=0; i<(unsigned)vecSize; ++i) {
-//            register unsigned j, n;
-//            for ( j=0; j<(unsigned)vecSize; ++j) {
-//                n = j&i;
-//                vec[i] += GET_SIGN(n) * initVec[j];
-//            }
-//        }
-//    }
-//    free (initVec);
-//}
 
 //-----------------------------------------------------------------------------
 //                                part B
 //-----------------------------------------------------------------------------
-
 
 /*
  * description:
@@ -92,14 +60,12 @@ void serial_fast_walsh(register int* vec, register int vecSize){
 
     // First half of the vector
     register int halfVecSize = vecSize >> 1;
+
     for(register int i=0;i<halfVecSize; i++){
         vec[i] =vec[i] + vec[i+halfVecSize];
     }
-
     // Second half of the vector
     for(register int i=halfVecSize;i<vecSize; i++){
-        // vector[i-vecSize/2]old=vector[i-vecSize/2]new-vector[i]
-    	// thats why we subtract vector[i] twice
     	vec[i] = ( vec[i-halfVecSize]-vec[i] ) - vec[i];
     }
 
@@ -107,11 +73,10 @@ void serial_fast_walsh(register int* vec, register int vecSize){
     if(halfVecSize == 1) {
         return;
     }
-
     serial_fast_walsh(vec, halfVecSize);
     serial_fast_walsh(vec + (halfVecSize), halfVecSize);
-
 }
+
 
 /*
  * description:
@@ -126,11 +91,11 @@ void serial_fast_walsh(register int* vec, register int vecSize){
  *      the result vector is inserted in the same input vector - vec
  */
 
-void fast_parallel_walsh_vec_generator(register int* vec,
-		register int vecSize, register int numOfThreads) {
+void fast_parallel_walsh_vec_generator(register int* vec, register int vecSize, 
+        register int numOfThreads) {
 
 	register int switchSize = vecSize / numOfThreads;
-    #pragma omp parallel shared(vec, vecSize, switchSize)
+    #pragma omp parallel 
 	{
 		register int currentVecSize;
 		for (currentVecSize = vecSize; currentVecSize > switchSize; (currentVecSize >>= 1)){
@@ -140,12 +105,7 @@ void fast_parallel_walsh_vec_generator(register int* vec,
 				register int currentMiddleVec = offset + currentHalfVec;
 				#pragma omp for schedule(guided)
 				for (register int i = offset; i < currentMiddleVec; i++){
-					/* a = vec[i]
-					 * b = vec[halfPlusI]
-					 * vec[i] = a + b
-					 * vec[halfPlusI] = a - b */
 					register int halfPlusI;
-
 					halfPlusI = currentHalfVec + i;
 					vec[i] += vec[halfPlusI];
 					vec[halfPlusI] = vec[i] - (vec[halfPlusI] << 1);
@@ -171,16 +131,14 @@ void fast_parallel_walsh_vec_generator(register int* vec,
  * return:
  * 		the WHT transform of vector is inserted into the same input vector
  */
-
-/* FIXME : i think this need to be done with nested parallelizem */
 void fast_parallel_walsh(register int *vec, register int vecSize) {
 
 	register int numOfThreads = omp_get_max_threads();
 
     // Prepare the base vector for all the lower order WHT problems
-    fast_parallel_walsh_vec_generator(vec, vecSize,numOfThreads);
+    fast_parallel_walsh_vec_generator(vec, vecSize, numOfThreads);
 
-    register int vecSizeOfThread=vecSize/numOfThreads;
+    register int vecSizeOfThread = vecSize/numOfThreads;
     if (vecSizeOfThread==1) {
         return;
     }
@@ -188,9 +146,13 @@ void fast_parallel_walsh(register int *vec, register int vecSize) {
     #pragma omp parallel
 	{
         register int threadIdx = omp_get_thread_num();
-        // Each thread calls to serial_fast_walsh with his private vector
-        //	located inside "vec"
+        /* Each thread calls to serial_fast_walsh with his private vector 
+         * located inside "vec" */
         serial_fast_walsh(vec + threadIdx *vecSizeOfThread,	vecSizeOfThread);
 	}
 }
+
+
+
+
 
