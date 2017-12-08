@@ -5,6 +5,7 @@
 
 #define GET_VAL(i, col) -(((__builtin_popcount((i) & (col)) & 1) << 1)-1)
 
+//FIXME : remove
 #define VAR_IN_CACHE_LINE 16
 #define CACHE_LINE_SIZE 64
 #define CACHE_SIZE 32768
@@ -99,24 +100,24 @@ void serial_fast_walsh(register int* vec, register int vecSize){
 void fast_parallel_walsh_vec_generator(register int* vec, register int vecSize, 
         register int numOfThreads) {
 
-	register int switchSize = vecSize / numOfThreads;
-    #pragma omp parallel 
-	{
-		register int currentVecSize;
-		for (currentVecSize = vecSize; currentVecSize > switchSize; (currentVecSize >>= 1)){
-			register int currentHalfVec = (currentVecSize >> 1);
-			/* go over all parts */
-			for (register int offset = 0; offset < vecSize; offset += currentVecSize){
-				register int currentMiddleVec = offset + currentHalfVec;
-				#pragma omp for schedule(guided)
-				for (register int i = offset; i < currentMiddleVec; i++){
-					register int halfPlusI;
-					halfPlusI = currentHalfVec + i;
-					vec[i] += vec[halfPlusI];
-					vec[halfPlusI] = vec[i] - (vec[halfPlusI] << 1);
-				}
-			}
-		}
+    register int switchSize = vecSize / numOfThreads;
+    register int currentVecSize;
+
+    for (currentVecSize = vecSize; currentVecSize > switchSize; (currentVecSize >>= 1)){
+        register int currentHalfVec = (currentVecSize >> 1);
+        /* go over all parts */
+        for (register int offset = 0; offset < vecSize; offset += currentVecSize){
+            register int currentMiddleVec = offset + currentHalfVec;
+                
+            #pragma omp parallel for schedule(guided)
+            for (register int i = offset; i < currentMiddleVec; i++){
+                register int halfPlusI;
+                halfPlusI = currentHalfVec + i;
+                register int tmp = vec[i];
+                vec[i] += vec[halfPlusI];
+                vec[halfPlusI] = tmp - vec[halfPlusI];
+            }
+	    }
 	}
 }
 
@@ -144,7 +145,6 @@ void fast_parallel_walsh(register int *vec, register int vecSize) {
     //end = clock();
     //printf("parallel serial part takes : %Lf\n", (long double)(end-start));    
                    
-    //FIXME: can we change it to 16 and than just << 4 ?!                         
 	register int numOfThreads = omp_get_max_threads();
 
     // Prepare the base vector for all the lower order WHT problems
