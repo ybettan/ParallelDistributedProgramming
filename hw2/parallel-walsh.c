@@ -1,28 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <omp.h>
 
 
 #define GET_VAL(i, col) -(((__builtin_popcount((i) & (col)) & 1) << 1)-1)
 
-//FIXME : remove
-#define VAR_IN_CACHE_LINE 16
-#define CACHE_LINE_SIZE 64
-#define CACHE_SIZE 32768
-#define NEED_FETCHING(num) !((num) & 15)
-
-
-//FIXME: can we remove some includes?
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <math.h>
-#include <smmintrin.h>
-#include <time.h>
-
-//FIXME: remove old one
-#define OLD_GET_VAL(i, col) -(((set_bits_num((i) & (col)) & 1) << 1)-1)
-#define TEST 256
 
 
 //-----------------------------------------------------------------------------
@@ -52,115 +35,74 @@ void simple_parallel_walsh(register int* vec, register int vecSize)
 //                                part B
 //-----------------------------------------------------------------------------
 
-/*
- * description:
- * 		Implements WHT Similar to FFT in a serial recursive way.
- *		Every call to the function is converting a WHT of size N
- *		into two WHT of size N/2
- */
-void serial_fast_walsh(register int* vec, register int vecSize){
+/* The base logic for each thread to handle.
+ * This is the normal WHT fast transform on a size that can be handle by 
+ * a sigle thread */
+void fast_serial_walsh(register int* vec, register int vecSize){
 
-    register int halfVecSize = vecSize >> 1;
+    register int devidedVecSize = vecSize >> 1;
 
-    // First half of the vector
-    for(register int i=0 ; i<halfVecSize ; i++){
-        vec[i] =vec[i] + vec[i+halfVecSize];
+    for(register int i=0 ; i<devidedVecSize ; i++) {
+        register int tmp = vec[i];
+        vec[i] += vec[i+devidedVecSize];
+    	vec[i+devidedVecSize] = tmp - vec[i+devidedVecSize];
         //if (NEED_FETCHING(i)) {
         //    __builtin_prefetch(vec + (i+CACHE_SIZE), 0);
         //}
         //__builtin_prefetch(vec + (i+TEST), 1);
     }
-    // Second half of the vector
-    for(register int i=halfVecSize ; i<vecSize ; i++){
-    	vec[i] = vec[i-halfVecSize] - (vec[i] << 1) ;
-        //if (NEED_FETCHING(i)) {
-        //    __builtin_prefetch(vec + (i+CACHE_SIZE), 0);
-        //}
-        //__builtin_prefetch(vec + (i+TEST), 1);
-    }
-    if(halfVecSize == 1) {
+    /* by putting the stop condition here we gain 1 uneeded recursive call */
+    if(devidedVecSize == 1) {
         return;
     }
-    serial_fast_walsh(vec, halfVecSize);
-    serial_fast_walsh(vec + (halfVecSize), halfVecSize);
+
+    fast_serial_walsh(vec, devidedVecSize);
+    fast_serial_walsh(vec + devidedVecSize, devidedVecSize);
 }
 
-/*
- * description:
- *      Prepare the base vector which will be the initial vector
- *      of every thread.
- *      After enough loops of the main for loop
- *      we will have a vector divided to numOfThreads smaller
- *      and equal size vectors, these smaller vectors will be the initial
- *      vector for a WHT/log(numOfThreads) size problem for each thread.
- *
- * return:
- *      the result vector is inserted in the same input vector - vec
- */
-void fast_parallel_walsh_vec_generator(register int* vec, register int vecSize, 
+/* do exactly what the serial version is doing, but stop when the current
+ * vector size has reach a size that can be handle by a single thread when
+ * using maximum utilization of our threads resource*/ 
+void reorgenize_input_vector(register int* vec, register int vecSize, 
         register int numOfThreads) {
 
-    register int switchSize = vecSize / numOfThreads;
-    register int currentVecSize;
+    register int minVecSize = vecSize / numOfThreads;
+    for (register int currVecSize=vecSize ; currVecSize>minVecSize ; 
+            currVecSize >>= 1) {
 
-    for (currentVecSize = vecSize; currentVecSize > switchSize; (currentVecSize >>= 1)){
-        register int currentHalfVec = (currentVecSize >> 1);
-        /* go over all parts */
-        for (register int offset = 0; offset < vecSize; offset += currentVecSize){
-            register int currentMiddleVec = offset + currentHalfVec;
-                
+        register int currDevidedVecSize = currVecSize >> 1;
+        for (register int diff=0 ; diff<vecSize ; diff+=currVecSize){
+
+            register int currDevidedVec = diff + currDevidedVecSize;
             #pragma omp parallel for schedule(guided)
-            for (register int i = offset; i < currentMiddleVec; i++){
-                register int halfPlusI;
-                halfPlusI = currentHalfVec + i;
+            for (register int i = diff; i < currDevidedVec; i++){
+
+                register int index = currDevidedVecSize + i;
                 register int tmp = vec[i];
-                vec[i] += vec[halfPlusI];
-                vec[halfPlusI] = tmp - vec[halfPlusI];
+                vec[i] += vec[index];
+                vec[index] = tmp - vec[index];
             }
 	    }
 	}
 }
 
 
-
-/*
- * description:
- * 		The main function of fast_parallel_walsh
- * 		tasks:
- * 			1. call fast_parallel_walsh_vec_generator to prepare
- * 				the base vector that hold the initial vector of every
- * 				thread (implemented in parallel)
- * 			2. call serial_fast_walsh in parallel so every thread
- * 				will calculate his own vectors and WHT of a reduced
- * 				size problem.
- *
- * return:
- * 		the WHT transform of vector is inserted into the same input vector
- */
 void fast_parallel_walsh(register int *vec, register int vecSize) {
 
-    // FIXME: to be removed
-    //clock_t start, end;
-    //start = clock();
-    //end = clock();
-    //printf("parallel serial part takes : %Lf\n", (long double)(end-start));    
-                   
 	register int numOfThreads = omp_get_max_threads();
-
-    // Prepare the base vector for all the lower order WHT problems
-    fast_parallel_walsh_vec_generator(vec, vecSize, numOfThreads);
-
-    register int vecSizeOfThread = vecSize/numOfThreads;
-    if (vecSizeOfThread==1) {
+    register int minSize = vecSize/numOfThreads;
+    if (minSize==1) {
         return;
     }
 
+    /* reorgenize the vector until we reach a size that fit a single thread */
+    reorgenize_input_vector(vec, vecSize, numOfThreads);
+
     #pragma omp parallel
 	{
-        register int threadIdx = omp_get_thread_num();
-        /* each thread nead  ~4300 cycles to compute all its L1 data 
-         *                   ~2200 cycles to compute half of its L1 date */ 
-        serial_fast_walsh(vec + threadIdx *vecSizeOfThread,	vecSizeOfThread);
+        /* give each thread a part of the vector to compute */
+        register int id = omp_get_thread_num();
+        fast_serial_walsh(vec + id*minSize,	minSize);
 	}
 }
 
