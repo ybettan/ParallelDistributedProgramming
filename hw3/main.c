@@ -36,9 +36,10 @@ int main(int argc, char** argv)
 		for (i = 0; i < citiesNum; i++)
 		{
 			// print the city (and its distance from the next city in the path)
-			printf("%d (%d) ", shortestPath[i], 
-					abs(xCoord[shortestPath[i]] - xCoord[shortestPath[(i + 1) % citiesNum]]) + 
-					abs(yCoord[shortestPath[i]] - yCoord[shortestPath[(i + 1) % citiesNum]]) );
+			printf("%d (%d) ", shortestPath[i],
+					1 +
+					2*abs(xCoord[shortestPath[i]] - xCoord[shortestPath[(i + 1) % citiesNum]]) + 
+					2*abs(yCoord[shortestPath[i]] - yCoord[shortestPath[(i + 1) % citiesNum]]) );
 		}
 		printf("%d\n", shortestPath[0]);
 		printf("Execution time: %g seconds\n", (double)(end - begin) / CLOCKS_PER_SEC);
