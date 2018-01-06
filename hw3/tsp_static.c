@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 
-#define INF 999999
+#define INF 3000000
 #define NOT_SET -1
 #define ERROR -2
 
