@@ -312,7 +312,6 @@ void create_array_of_states(int **agencyMatrix, State *state, int citiesNum,
         for (int i=0 ; i<arrSize ; i++) {
             if (arrRes[i] == NULL) {
                 arrRes[i] = state;
-                //printf("inserting vertex = %d\n", state->vertex);
                 return;
             }
         }
