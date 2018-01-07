@@ -275,14 +275,138 @@ int cpu_main(State *state, int citiesNum, int **agencyMatrix,
 //                                    MPI
 //-----------------------------------------------------------------------------
 
+/* register State struct into mpi library */
+void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
+    
+    int blockLengths[5] = {1, 1, citiesNum, citiesNum, citiesNum};
+    MPI_Aint displacements[5];
+    MPI_Datatype typelist[5] = {MPI_INT};
+    MPI_Aint addresses[6]; //helper array
+
+    /* compute displacements */
+    MPI_Get_address(state, &addresses[0]);
+    MPI_Get_address(&state->vertex, &addresses[1]);
+    MPI_Get_address(&state->cost, &addresses[2]);
+    MPI_Get_address(&state->shortestPathUntilNow, &addresses[3]);
+    MPI_Get_address(&state->visitedNodesUntilNow, &addresses[4]);
+    MPI_Get_address(&state->shortestPathRes, &addresses[5]);
+
+    displacements[0] = addresses[1] - addresses[0];
+    displacements[1] = addresses[2] - addresses[0];
+    displacements[2] = addresses[3] - addresses[0];
+    displacements[3] = addresses[4] - addresses[0];
+    displacements[4] = addresses[5] - addresses[0];
+
+    /* create the derived type */
+    MPI_Type_create_struct(5, blockLengths, displacements, typelist, newTypeName);
+
+    /* commit the new type to mpi library */
+    MPI_Type_commit(newTypeName);
+}
+
+/* create an array of states to be sent to other tasks */
+void create_array_of_states(int **agencyMatrix, State *state, int citiesNum,
+        int depth, int maxDepth, int arrSize, State **arrRes) {
+
+    /* if we have reached required depth insert states to arrRes */
+    if (depth == maxDepth) {
+        for (int i=0 ; i<arrSize ; i++) {
+            if (arrRes[i] == NULL) {
+                arrRes[i] = state;
+                return;
+            }
+        }
+    }
+
+    for (int i=0 ; i<citiesNum ; i++) {
+
+        if (state->visitedNodesUntilNow[i])
+            continue;
+
+        /* create shortestPathUntilNow array */
+        int *shortestPathUntilNow = malloc(citiesNum * sizeof(int));
+        assert(shortestPathUntilNow);
+        bool updated = false;
+        for (int k=0 ; k<citiesNum ; k++) {
+            if(state->shortestPathUntilNow[k] == NOT_SET && !updated) {
+                shortestPathUntilNow[k] = i;
+                updated = true;
+            } else {
+                shortestPathUntilNow[k] = state->shortestPathUntilNow[k];
+            }
+        }
+
+        /* create visitedNodesUntilNow array */
+        int *visitedNodesUntilNow = malloc(citiesNum * sizeof(bool));
+        assert(visitedNodesUntilNow);
+        for (int k=0 ; k<citiesNum ; k++) {
+            visitedNodesUntilNow[k] = state->visitedNodesUntilNow[k];
+        }
+        visitedNodesUntilNow[i] = 1;
+
+        /* create the Son state */
+        State *son = create_state(i, shortestPathUntilNow, visitedNodesUntilNow,
+                citiesNum, agencyMatrix);
+        assert(son);
+
+        create_array_of_states(agencyMatrix, son, citiesNum, depth+1, maxDepth,
+                arrSize, arrRes);
+    }
+    free_state(state);
+}
+
+
 /* the root task send all the data to other tasks, wait to all the data to be
  * received on other task, compute a sub problem itself, gather the results
  * of all other tasks and return the best result */
-void rootExec(void) {
+void rootExec(int numTasks, int citiesNum, int *xCoord, int *yCoord,
+        int *shortestPath) {
+
+    MPI_Datatype stateTypeName;
+
+    /* create agency matrix */
+    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+    assert(agencyMatrix);
+
+    /* create rootState for registering State struct to mpi library */
+    int *shortestPathUntilNow = malloc(citiesNum * sizeof(int));
+    int *visitedNodesUntilNow = malloc(citiesNum * sizeof(int));
+    assert(shortestPathUntilNow && visitedNodesUntilNow);
+    shortestPathUntilNow[0] = 0;
+    visitedNodesUntilNow[0] = 1;
+    for (int i=1 ; i<citiesNum ; i++) {
+        shortestPathUntilNow[i] = NOT_SET;
+        visitedNodesUntilNow[i] = 0;
+    }
+    State *rootState = create_state(0, shortestPathUntilNow,
+            visitedNodesUntilNow, citiesNum, agencyMatrix);
 
     /* register State struct to MPI library */
+    build_state_type(rootState, citiesNum, &stateTypeName);
 
-    /* send the data to other tasks */
+    /* compute how deep the root task need to go in order to gave enought 
+     * States for all CPUs */
+    int depth = 1;
+    int citiesNumLeft = citiesNum-1;
+    int numStates = citiesNumLeft;
+    while (numStates < numTasks) {
+        depth++;
+        citiesNumLeft--;
+        numStates *= citiesNumLeft;
+    }
+
+    /* create array of state to send to the tasks */
+    State **statesArr = malloc(numStates * sizeof(State*));
+    assert(statesArr);
+    for (int i=0 ; i<numStates ; i++) {
+        statesArr[i] = NULL;
+    }
+
+    /* this will also free rootState memory */
+    create_array_of_states();
+
+    /* send the data to other tasks keep some work for root task */
+    int numStatesForRootTask = numStates / numTasks;
 
     /* wait for all tasks to receive the data */
     // ---> Barrier
