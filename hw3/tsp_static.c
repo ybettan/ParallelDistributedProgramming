@@ -25,34 +25,6 @@
 int **agencyMatrix;
 int citiesNum;
 
-//-----------------------------------------------------------------------------
-//                                heuristic
-//-----------------------------------------------------------------------------
-
-/* for a given cost of a node, caculate the lower bound of the path using the
- * lightest edge of each vertex that wehere not visited.
- * (the path may not exist but this will be out lower bound) */
-int heuristic(const bool *visitedNodesUntilNow, int currCost) {
-
-    int res = currCost;
-
-    /* go over all not-visited vertex */
-    for (int i=0 ; i<citiesNum ; i++) {
-
-        if (visitedNodesUntilNow[i])
-            continue;
-
-        /* find the lightest edge of vertex i */
-        int lightestEdge = INF;
-        for (int j=0 ; j<citiesNum ; j++) {
-            if (agencyMatrix[i][j] < lightestEdge) {
-                lightestEdge = agencyMatrix[i][j];
-            }
-        }
-        res += lightestEdge;
-    }
-    return res;
-}
 
 //-----------------------------------------------------------------------------
 //                               State
@@ -114,6 +86,57 @@ void free_state(State *state) {
     free(state->shortestPathRes);
     free(state);
 }
+
+//-----------------------------------------------------------------------------
+//                                heuristic
+//-----------------------------------------------------------------------------
+
+/* for a given cost of a node, caculate the lower bound of the path using the
+ * lightest edge of each vertex that wehere not visited.
+ * (the path may not exist but this will be out lower bound) */
+int heuristic(const State *state) {
+
+    int res = state->cost;
+
+    /* go over all not-visited vertex */
+    for (int i=0 ; i<citiesNum ; i++) {
+
+        if (state->visitedNodesUntilNow[i])
+            continue;
+
+        /* find the lightest edge of vertex i */
+        int lightestEdge = INF;
+        for (int j=0 ; j<citiesNum ; j++) {
+            if (agencyMatrix[i][j] < lightestEdge) {
+                lightestEdge = agencyMatrix[i][j];
+            }
+        }
+        res += lightestEdge;
+    }
+    return res;
+}
+//int heuristic(const bool *visitedNodesUntilNow, int currCost) {
+//
+//    int res = currCost;
+//
+//    /* go over all not-visited vertex */
+//    for (int i=0 ; i<citiesNum ; i++) {
+//
+//        if (visitedNodesUntilNow[i])
+//            continue;
+//
+//        /* find the lightest edge of vertex i */
+//        int lightestEdge = INF;
+//        for (int j=0 ; j<citiesNum ; j++) {
+//            if (agencyMatrix[i][j] < lightestEdge) {
+//                lightestEdge = agencyMatrix[i][j];
+//            }
+//        }
+//        res += lightestEdge;
+//    }
+//    return res;
+//}
+
 
 //-----------------------------------------------------------------------------
 //                             agency matrix
@@ -299,22 +322,25 @@ int main() {
     //print_matrix(matrix, 3);
 
     /* heuristic test */
-    bool visitedNodesUntilNow[3] = {false, false, false};
-    assert(heuristic(visitedNodesUntilNow, 0) == 11);
-    visitedNodesUntilNow[0] = true;
-    assert(heuristic(visitedNodesUntilNow, 0) == 8);
-    assert(heuristic(visitedNodesUntilNow, 10) == 18);
-    visitedNodesUntilNow[1] = true;
-    visitedNodesUntilNow[2] = true;
-    assert(heuristic(visitedNodesUntilNow, 0) == 0);
-    assert(heuristic(visitedNodesUntilNow, 20) == 20);
+    bool visitedNodesUntilNow20[] = {false, false, false};
+    int shortestPathUntilNow20[] = {NOT_SET, NOT_SET, NOT_SET};
+    State *state20 = create_state(NOT_SET, shortestPathUntilNow20, 
+            visitedNodesUntilNow20);
+    assert(heuristic(state20) == 11);
+    state20->visitedNodesUntilNow[0] = true;
+    assert(heuristic(state20) == 8);
+    state20->cost = 10;
+    assert(heuristic(state20) == 18);
+    state20->visitedNodesUntilNow[1] = true;
+    state20->visitedNodesUntilNow[2] = true;
+    state20->cost = 0;
+    assert(heuristic(state20) == 0);
+    state20->cost = 20;
+    assert(heuristic(state20) == 20);
 
     /* create_test test */
     int shortestPathUntilNow[] = {1, NOT_SET, NOT_SET};
-    visitedNodesUntilNow[0] = false;
-    visitedNodesUntilNow[1] = true;
-    visitedNodesUntilNow[2] = false;
-    /* now visitedNodesUntilNow[] = {false, true, false} */
+    bool visitedNodesUntilNow[] = {false, true, false};
     State *state = create_state(1, shortestPathUntilNow, visitedNodesUntilNow);
     assert(state->vertex == 1);
     assert(state->cost == 0);
