@@ -101,7 +101,7 @@ int heuristic(const State *state) {
     /* go over all not-visited vertex */
     for (int i=0 ; i<citiesNum ; i++) {
 
-        if (state->visitedNodesUntilNow[i])
+        if (state->visitedNodesUntilNow[i] && i!=state->shortestPathUntilNow[0])
             continue;
 
         /* find the lightest edge of vertex i */
@@ -115,27 +115,6 @@ int heuristic(const State *state) {
     }
     return res;
 }
-//int heuristic(const bool *visitedNodesUntilNow, int currCost) {
-//
-//    int res = currCost;
-//
-//    /* go over all not-visited vertex */
-//    for (int i=0 ; i<citiesNum ; i++) {
-//
-//        if (visitedNodesUntilNow[i])
-//            continue;
-//
-//        /* find the lightest edge of vertex i */
-//        int lightestEdge = INF;
-//        for (int j=0 ; j<citiesNum ; j++) {
-//            if (agencyMatrix[i][j] < lightestEdge) {
-//                lightestEdge = agencyMatrix[i][j];
-//            }
-//        }
-//        res += lightestEdge;
-//    }
-//    return res;
-//}
 
 
 //-----------------------------------------------------------------------------
@@ -258,9 +237,15 @@ int cpu_main(State *state, int *shortestPath) {
             return ERROR;
         }
 
+        /* prune branches if there is no chance to obtain shortest path from 
+         * this son */
+        if (heuristic(son) > minPathLen) {
+            free_state(son);
+            continue;
+        }
+
         /* compute the result for this son */
         int res = cpu_main(son, shortestPath);
-
         if (res == ERROR) {
             printf("ERROR returned from cpu_main()\n");
             return ERROR;
@@ -322,21 +307,51 @@ int main() {
     //print_matrix(matrix, 3);
 
     /* heuristic test */
-    bool visitedNodesUntilNow20[] = {false, false, false};
-    int shortestPathUntilNow20[] = {NOT_SET, NOT_SET, NOT_SET};
-    State *state20 = create_state(NOT_SET, shortestPathUntilNow20, 
-            visitedNodesUntilNow20);
+    bool visitedNodesUntilNow20[] = {true, false, false};
+    int shortestPathUntilNow20[] = {0, NOT_SET, NOT_SET};
+    State *state20;
+    state20 = create_state(0, shortestPathUntilNow20, visitedNodesUntilNow20);
+    assert(state20->cost == 0);
     assert(heuristic(state20) == 11);
-    state20->visitedNodesUntilNow[0] = true;
-    assert(heuristic(state20) == 8);
-    state20->cost = 10;
-    assert(heuristic(state20) == 18);
-    state20->visitedNodesUntilNow[1] = true;
-    state20->visitedNodesUntilNow[2] = true;
-    state20->cost = 0;
-    assert(heuristic(state20) == 0);
-    state20->cost = 20;
-    assert(heuristic(state20) == 20);
+    free(state20->shortestPathRes);
+    free(state20);
+    visitedNodesUntilNow20[2] = true;
+    /* not visitedNodesUntilNow20 is {true, false, true} */
+    shortestPathUntilNow20[1] = 2;
+    /* not shortestPathUntilNow20 is {0, 2, NOT_SET} */
+    state20 = create_state(0, shortestPathUntilNow20, visitedNodesUntilNow20);
+    assert(state20->cost == 7);
+    assert(heuristic(state20) == 13);
+    free(state20->shortestPathRes);
+    free(state20);
+    visitedNodesUntilNow20[1] = true;
+    /* not visitedNodesUntilNow20 is {true, true, true} */
+    shortestPathUntilNow20[2] = 1;
+    /* not shortestPathUntilNow20 is {0, 2, 1} */
+    state20 = create_state(0, shortestPathUntilNow20, visitedNodesUntilNow20);
+    assert(state20->cost == 12);
+    assert(heuristic(state20) == 15);
+    free(state20->shortestPathRes);
+    free(state20);
+    visitedNodesUntilNow20[2] = false;
+    /* not visitedNodesUntilNow20 is {true, true, false} */
+    shortestPathUntilNow20[1] = 1;
+    shortestPathUntilNow20[2] = NOT_SET;
+    /* not shortestPathUntilNow20 is {0, 1, NOT_SET} */
+    state20 = create_state(0, shortestPathUntilNow20, visitedNodesUntilNow20);
+    assert(state20->cost == 3);
+    assert(heuristic(state20) == 11);
+    free(state20->shortestPathRes);
+    free(state20);
+    visitedNodesUntilNow20[2] = true;
+    /* not visitedNodesUntilNow20 is {true, true, false} */
+    shortestPathUntilNow20[2] = 2;
+    /* not shortestPathUntilNow20 is {0, 1, 2} */
+    state20 = create_state(0, shortestPathUntilNow20, visitedNodesUntilNow20);
+    assert(state20->cost == 8);
+    assert(heuristic(state20) == 11);
+    free(state20->shortestPathRes);
+    free(state20);
 
     /* create_test test */
     int shortestPathUntilNow[] = {1, NOT_SET, NOT_SET};
@@ -562,6 +577,15 @@ int main() {
     free(state17->shortestPathRes);
     free(state17);
 
+    int shortestPathUntilNow18[] = {0,NOT_SET,NOT_SET,NOT_SET};
+    bool visitedNodesUntilNow18[] = {true, false, false, false};
+    State *state18=create_state(0, shortestPathUntilNow18, visitedNodesUntilNow18);   
+    assert(cpu_main(state18, shortestPath) == 12);
+    assert(shortestPath[0] == 0);
+    assert((shortestPath[1]==1 && shortestPath[2]==2 && shortestPath[3]==3) ||
+           (shortestPath[1]==3 && shortestPath[2]==2 && shortestPath[3]==1));
+    free(state18->shortestPathRes);
+    free(state18);
 
 
 
