@@ -1,4 +1,4 @@
-//#include <mpi.h>
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -275,9 +275,53 @@ int cpu_main(State *state, int citiesNum, int **agencyMatrix,
 //                                    MPI
 //-----------------------------------------------------------------------------
 
+/* the root task send all the data to other tasks, wait to all the data to be
+ * received on other task, compute a sub problem itself, gather the results
+ * of all other tasks and return the best result */
+void rootExec(void) {
+
+    /* register State struct to MPI library */
+
+    /* send the data to other tasks */
+
+    /* wait for all tasks to receive the data */
+    // ---> Barrier
+
+    /* compute a sub problem like all other tasks */
+
+    /* gather the result from all other tasks */
+
+    /* return ther best result */
+}
+
+/* receive the data from the root task, compute a sub problem and return the
+ * best local result to root task */
+void otherExec(void) {
+
+    /* receive the data from root task */
+
+    /* wait for all tasks to receive the data */
+    // ---> Barrier
+    
+    /* compute a sub problem */
+
+}
+
 // The static parellel algorithm main function.
 int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 {
+    int numTasks, myRank;
+
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
+    if (myRank == 0) {
+        rootExec();
+    } else {
+        otherExec();
+    }
+
+
 	return -1;	//TODO
 }
 
