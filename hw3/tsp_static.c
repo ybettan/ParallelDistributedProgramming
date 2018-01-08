@@ -71,6 +71,17 @@ State* create_state(int vertex, int *shortestPathUntilNow,
     return state;
 }
 
+/* copy src state to dst state */
+void copy_state(State *src, State *dst, int citiesNum) {
+    dst->vertex = src->vertex;
+    dst->cost = src->cost;
+    for (int i=0 ; i<citiesNum ; i++) {
+        dst->shortestPathUntilNow[i] = src->shortestPathUntilNow[i];
+        dst->visitedNodesUntilNow[i] = src->visitedNodesUntilNow[i];
+        dst->shortestPathRes[i] = src->shortestPathRes[i];
+    }
+}
+
 /* free the allocated memory for State struct */
 void free_state(State *state) {
     if ( !state )
@@ -79,6 +90,20 @@ void free_state(State *state) {
     free(state->visitedNodesUntilNow);
     free(state->shortestPathRes);
     free(state);
+}
+
+/* allocate memory for arrays of in with all initiallized to NOT_SET */
+int* create_empty_generic_arr(int citiesNum) {
+    int *res = malloc(citiesNum * sizeof(int));
+    assert(res);
+    for (int i=0 ; i<citiesNum ; i++) {
+        res[i] = NOT_SET;
+    }
+    return res;
+}
+
+void free_generic_arr(int *arr) {
+    free(arr);
 }
 
 //-----------------------------------------------------------------------------
@@ -304,15 +329,38 @@ void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
     MPI_Type_commit(newTypeName);
 }
 
-/* create an array of states to be sent to other tasks */
-void create_array_of_states(int **agencyMatrix, State *state, int citiesNum,
-        int depth, int maxDepth, int arrSize, State **arrRes) {
+/* allocate the memory for statesArr and initiallize it to NOT_SET values */
+State* allocate_array_of_states(int size) {
+    State *res = malloc(size * sizeof(State));
+    assert(res);
+    for (int i=0 ; i<size ; i++) {
+        res[i].vertex = NOT_SET;
+        res[i].cost = NOT_SET;
+        res[i].shortestPathUntilNow = create_empty_generic_arr(size);
+        res[i].visitedNodesUntilNow = create_empty_generic_arr(size);
+        res[i].shortestPathRes = create_empty_generic_arr(size);
+    }
+    return res;
+}
+
+void free_array_of_states(State *statesArr, int size) {
+    for (int i=0 ; i<size ; i++) {
+        free_generic_arr(statesArr[i].shortestPathUntilNow);
+        free_generic_arr(statesArr[i].visitedNodesUntilNow);
+        free_generic_arr(statesArr[i].shortestPathRes);
+    }
+    free(statesArr);
+}
+
+/* initiallize the array of states array of states to be sent to other tasks */
+void initiallize_array_of_states(int **agencyMatrix, State *state, int citiesNum,
+        int depth, int maxDepth, int arrSize, State *arrRes) {
 
     /* if we have reached required depth insert states to arrRes */
     if (depth == maxDepth) {
         for (int i=0 ; i<arrSize ; i++) {
-            if (arrRes[i] == NULL) {
-                arrRes[i] = state;
+            if (arrRes[i].vertex == NOT_SET) {
+                copy_state(state, &arrRes[i], citiesNum);
                 return;
             }
         }
@@ -349,23 +397,74 @@ void create_array_of_states(int **agencyMatrix, State *state, int citiesNum,
                 citiesNum, agencyMatrix);
         assert(son);
 
-        create_array_of_states(agencyMatrix, son, citiesNum, depth+1, maxDepth,
+        initiallize_array_of_states(agencyMatrix, son, citiesNum, depth+1, maxDepth,
                 arrSize, arrRes);
-    }
-    free_state(state);
-}
 
-void free_array_of_states(State **statesArr, int size) {
-    for (int i=0 ; i<size ; i++) {
-        free_state(statesArr[i]);
+        free_state(son);
     }
-    free(statesArr);
 }
+//void initiallize_array_of_states(int **agencyMatrix, State *state, int citiesNum,
+//        int depth, int maxDepth, int arrSize, State **arrRes) {
+//
+//    /* if we have reached required depth insert states to arrRes */
+//    if (depth == maxDepth) {
+//        for (int i=0 ; i<arrSize ; i++) {
+//            if (arrRes[i] == NULL) {
+//                arrRes[i] = state;
+//                return;
+//            }
+//        }
+//    }
+//
+//    for (int i=0 ; i<citiesNum ; i++) {
+//
+//        if (state->visitedNodesUntilNow[i])
+//            continue;
+//
+//        /* create shortestPathUntilNow array */
+//        int *shortestPathUntilNow = malloc(citiesNum * sizeof(int));
+//        assert(shortestPathUntilNow);
+//        bool updated = false;
+//        for (int k=0 ; k<citiesNum ; k++) {
+//            if(state->shortestPathUntilNow[k] == NOT_SET && !updated) {
+//                shortestPathUntilNow[k] = i;
+//                updated = true;
+//            } else {
+//                shortestPathUntilNow[k] = state->shortestPathUntilNow[k];
+//            }
+//        }
+//
+//        /* create visitedNodesUntilNow array */
+//        int *visitedNodesUntilNow = malloc(citiesNum * sizeof(int));
+//        assert(visitedNodesUntilNow);
+//        for (int k=0 ; k<citiesNum ; k++) {
+//            visitedNodesUntilNow[k] = state->visitedNodesUntilNow[k];
+//        }
+//        visitedNodesUntilNow[i] = 1;
+//
+//        /* create the Son state */
+//        State *son = create_state(i, shortestPathUntilNow, visitedNodesUntilNow,
+//                citiesNum, agencyMatrix);
+//        assert(son);
+//
+//        initiallize_array_of_states(agencyMatrix, son, citiesNum, depth+1, maxDepth,
+//                arrSize, arrRes);
+//    }
+//    free_state(state);
+//}
 
-/* send messages in round robbin to other tasks rank{1, 2,...numTasks}.
+//void free_array_of_states(State **statesArr, int size) {
+//    for (int i=0 ; i<size ; i++) {
+//        free_state(statesArr[i]);
+//    }
+//    free(statesArr);
+//}
+
+/* send messages to other tasks rank{1, 2,...numTasks}.
  * NOTE:
  * this fuction send all it gots, it is not aware that a part of the statesArr
  * stays for root task */
+//FIXME: update statesArr
 int send_to_other_tasks(State **statesArrToOther, int numStates,
         MPI_Datatype stateTypeName) {
 
@@ -450,14 +549,16 @@ void rootExec(int citiesNum, int *xCoord, int *yCoord, int *shortestPath) {
     }
     printf("root : #CPUs = %d\nroot : maxDepth = %d\n", numTasks, maxDepth);
 
+    //FIXME: update according to new create_array() 
     /* create array of state to send to the tasks */
     State **statesArr = malloc(numStates * sizeof(State*));
     assert(statesArr);
     for (int i=0 ; i<numStates ; i++) {
         statesArr[i] = NULL;
     }
+    //FIXME: this does not free memory anymore
     /* this will also free rootState memory */
-    create_array_of_states(agencyMatrix, rootState, citiesNum, 0, maxDepth,
+    initiallize_array_of_states(agencyMatrix, rootState, citiesNum, 0, maxDepth,
             numStates, statesArr);
     printf("root : created statesArr\n");
 
@@ -898,7 +999,6 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //    citiesNum = 6;
 //    int shortestPath3[6];
 //    agencyMatrix = create_agency_matrix(xCoord3, yCoord3, citiesNum);
-//    //citiesNum = 6;
 //    int *shortestPathUntilNow30 = malloc(citiesNum * sizeof(int));
 //    int *visitedNodesUntilNow30 = malloc(citiesNum * sizeof(int));
 //    shortestPathUntilNow30[0] = 0;
@@ -910,105 +1010,129 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //    State *rootState = create_state(0, shortestPathUntilNow30,
 //            visitedNodesUntilNow30, citiesNum, agencyMatrix);
 //    int numStates = 20;
-//    State **statesArr = malloc(numStates * sizeof(State*));
-//    for (int i=0 ; i<numStates ; i++) {
-//        statesArr[i] = NULL;
-//    }
-//    create_array_of_states(agencyMatrix, rootState, citiesNum, 0, 2, numStates,
+//    State *statesArr = allocate_array_of_states(numStates);
+//    initiallize_array_of_states(agencyMatrix, rootState, citiesNum, 0, 2, numStates,
 //            statesArr);
+//    free_state(rootState);
 //
-//    assert(statesArr[0]->vertex == 2);
-//    assert(statesArr[0]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[0]->shortestPathUntilNow[1] == 1);
-//    assert(statesArr[0]->shortestPathUntilNow[2] == 2);
-//    assert(statesArr[1]->vertex == 3);
-//    assert(statesArr[1]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[1]->shortestPathUntilNow[1] == 1);
-//    assert(statesArr[1]->shortestPathUntilNow[2] == 3);
-//    assert(statesArr[2]->vertex == 4);
-//    assert(statesArr[2]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[2]->shortestPathUntilNow[1] == 1);
-//    assert(statesArr[2]->shortestPathUntilNow[2] == 4);
-//    assert(statesArr[3]->vertex == 5);
-//    assert(statesArr[3]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[3]->shortestPathUntilNow[1] == 1);
-//    assert(statesArr[3]->shortestPathUntilNow[2] == 5);
-//    assert(statesArr[4]->vertex == 1);
-//    assert(statesArr[4]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[4]->shortestPathUntilNow[1] == 2);
-//    assert(statesArr[4]->shortestPathUntilNow[2] == 1);
-//    assert(statesArr[5]->vertex == 3);
-//    assert(statesArr[5]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[5]->shortestPathUntilNow[1] == 2);
-//    assert(statesArr[5]->shortestPathUntilNow[2] == 3);
-//    assert(statesArr[6]->vertex == 4);
-//    assert(statesArr[6]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[6]->shortestPathUntilNow[1] == 2);
-//    assert(statesArr[6]->shortestPathUntilNow[2] == 4);
-//    assert(statesArr[7]->vertex == 5);
-//    assert(statesArr[7]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[7]->shortestPathUntilNow[1] == 2);
-//    assert(statesArr[7]->shortestPathUntilNow[2] == 5);
-//    assert(statesArr[8]->vertex == 1);
-//    assert(statesArr[8]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[8]->shortestPathUntilNow[1] == 3);
-//    assert(statesArr[8]->shortestPathUntilNow[2] == 1);
-//    assert(statesArr[9]->vertex == 2);
-//    assert(statesArr[9]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[9]->shortestPathUntilNow[1] == 3);
-//    assert(statesArr[9]->shortestPathUntilNow[2] == 2);
-//    assert(statesArr[10]->vertex == 4);
-//    assert(statesArr[10]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[10]->shortestPathUntilNow[1] == 3);
-//    assert(statesArr[10]->shortestPathUntilNow[2] == 4);
-//    assert(statesArr[11]->vertex == 5);
-//    assert(statesArr[11]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[11]->shortestPathUntilNow[1] == 3);
-//    assert(statesArr[11]->shortestPathUntilNow[2] == 5);
-//    assert(statesArr[12]->vertex == 1);
-//    assert(statesArr[12]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[12]->shortestPathUntilNow[1] == 4);
-//    assert(statesArr[12]->shortestPathUntilNow[2] == 1);
-//    assert(statesArr[13]->vertex == 2);
-//    assert(statesArr[13]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[13]->shortestPathUntilNow[1] == 4);
-//    assert(statesArr[13]->shortestPathUntilNow[2] == 2);
-//    assert(statesArr[14]->vertex == 3);
-//    assert(statesArr[14]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[14]->shortestPathUntilNow[1] == 4);
-//    assert(statesArr[14]->shortestPathUntilNow[2] == 3);
-//    assert(statesArr[15]->vertex == 5);
-//    assert(statesArr[15]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[15]->shortestPathUntilNow[1] == 4);
-//    assert(statesArr[15]->shortestPathUntilNow[2] == 5);
-//    assert(statesArr[16]->vertex == 1);
-//    assert(statesArr[16]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[16]->shortestPathUntilNow[1] == 5);
-//    assert(statesArr[16]->shortestPathUntilNow[2] == 1);
-//    assert(statesArr[17]->vertex == 2);
-//    assert(statesArr[17]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[17]->shortestPathUntilNow[1] == 5);
-//    assert(statesArr[17]->shortestPathUntilNow[2] == 2);
-//    assert(statesArr[18]->vertex == 3);
-//    assert(statesArr[18]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[18]->shortestPathUntilNow[1] == 5);
-//    assert(statesArr[18]->shortestPathUntilNow[2] == 3);
-//    assert(statesArr[19]->vertex == 4);
-//    assert(statesArr[19]->shortestPathUntilNow[0] == 0);
-//    assert(statesArr[19]->shortestPathUntilNow[1] == 5);
-//    assert(statesArr[19]->shortestPathUntilNow[2] == 4);
+//    assert(statesArr[0].vertex == 2);
+//    assert(statesArr[0].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[0].shortestPathUntilNow[1] == 1);
+//    assert(statesArr[0].shortestPathUntilNow[2] == 2);
+//    assert(statesArr[1].vertex == 3);
+//    assert(statesArr[1].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[1].shortestPathUntilNow[1] == 1);
+//    assert(statesArr[1].shortestPathUntilNow[2] == 3);
+//    assert(statesArr[2].vertex == 4);
+//    assert(statesArr[2].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[2].shortestPathUntilNow[1] == 1);
+//    assert(statesArr[2].shortestPathUntilNow[2] == 4);
+//    assert(statesArr[3].vertex == 5);
+//    assert(statesArr[3].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[3].shortestPathUntilNow[1] == 1);
+//    assert(statesArr[3].shortestPathUntilNow[2] == 5);
+//    assert(statesArr[4].vertex == 1);
+//    assert(statesArr[4].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[4].shortestPathUntilNow[1] == 2);
+//    assert(statesArr[4].shortestPathUntilNow[2] == 1);
+//    assert(statesArr[5].vertex == 3);
+//    assert(statesArr[5].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[5].shortestPathUntilNow[1] == 2);
+//    assert(statesArr[5].shortestPathUntilNow[2] == 3);
+//    assert(statesArr[6].vertex == 4);
+//    assert(statesArr[6].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[6].shortestPathUntilNow[1] == 2);
+//    assert(statesArr[6].shortestPathUntilNow[2] == 4);
+//    assert(statesArr[7].vertex == 5);
+//    assert(statesArr[7].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[7].shortestPathUntilNow[1] == 2);
+//    assert(statesArr[7].shortestPathUntilNow[2] == 5);
+//    assert(statesArr[8].vertex == 1);
+//    assert(statesArr[8].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[8].shortestPathUntilNow[1] == 3);
+//    assert(statesArr[8].shortestPathUntilNow[2] == 1);
+//    assert(statesArr[9].vertex == 2);
+//    assert(statesArr[9].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[9].shortestPathUntilNow[1] == 3);
+//    assert(statesArr[9].shortestPathUntilNow[2] == 2);
+//    assert(statesArr[10].vertex == 4);
+//    assert(statesArr[10].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[10].shortestPathUntilNow[1] == 3);
+//    assert(statesArr[10].shortestPathUntilNow[2] == 4);
+//    assert(statesArr[11].vertex == 5);
+//    assert(statesArr[11].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[11].shortestPathUntilNow[1] == 3);
+//    assert(statesArr[11].shortestPathUntilNow[2] == 5);
+//    assert(statesArr[12].vertex == 1);
+//    assert(statesArr[12].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[12].shortestPathUntilNow[1] == 4);
+//    assert(statesArr[12].shortestPathUntilNow[2] == 1);
+//    assert(statesArr[13].vertex == 2);
+//    assert(statesArr[13].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[13].shortestPathUntilNow[1] == 4);
+//    assert(statesArr[13].shortestPathUntilNow[2] == 2);
+//    assert(statesArr[14].vertex == 3);
+//    assert(statesArr[14].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[14].shortestPathUntilNow[1] == 4);
+//    assert(statesArr[14].shortestPathUntilNow[2] == 3);
+//    assert(statesArr[15].vertex == 5);
+//    assert(statesArr[15].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[15].shortestPathUntilNow[1] == 4);
+//    assert(statesArr[15].shortestPathUntilNow[2] == 5);
+//    assert(statesArr[16].vertex == 1);
+//    assert(statesArr[16].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[16].shortestPathUntilNow[1] == 5);
+//    assert(statesArr[16].shortestPathUntilNow[2] == 1);
+//    assert(statesArr[17].vertex == 2);
+//    assert(statesArr[17].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[17].shortestPathUntilNow[1] == 5);
+//    assert(statesArr[17].shortestPathUntilNow[2] == 2);
+//    assert(statesArr[18].vertex == 3);
+//    assert(statesArr[18].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[18].shortestPathUntilNow[1] == 5);
+//    assert(statesArr[18].shortestPathUntilNow[2] == 3);
+//    assert(statesArr[19].vertex == 4);
+//    assert(statesArr[19].shortestPathUntilNow[0] == 0);
+//    assert(statesArr[19].shortestPathUntilNow[1] == 5);
+//    assert(statesArr[19].shortestPathUntilNow[2] == 4);
 //
-//    for (int i=0 ; i<numStates ; i++) {
-//        free_state(statesArr[i]);
+//    free_array_of_states(statesArr, numStates);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//    /* create_empty_generic_arr, free_generic_arr and copy_state test */
+//    int xCoord5[] = {0, 1, 1};
+//    int yCoord5[] = {0, 0, 1};
+//    citiesNum = 3;
+//    agencyMatrix = create_agency_matrix(xCoord5, yCoord5, citiesNum);
+//
+//    int *arr1 = create_empty_generic_arr(citiesNum);
+//    int *arr2 = create_empty_generic_arr(citiesNum);
+//    for (int i=0 ; i<citiesNum ; i++) {
+//        assert(arr1[i] == NOT_SET);
+//        assert(arr2[i] == NOT_SET);
 //    }
-//    free(statesArr);
+//    State *emptyState = create_state(NOT_SET, arr1, arr2, citiesNum, agencyMatrix);
 //
+//    int shortestPathUntilNow50[] = {1, 2, 0};
+//    int visitedNodesUntilNow50[] = {1, 1, 1};
+//    State *realState = create_state(0, shortestPathUntilNow50,
+//            visitedNodesUntilNow50, citiesNum, agencyMatrix);
 //
+//    copy_state(realState, emptyState, citiesNum);
+//    assert(emptyState->vertex == 0);
+//    assert(emptyState->cost == realState->cost);
+//    assert(emptyState->shortestPathUntilNow[0] == 1);
+//    assert(emptyState->shortestPathUntilNow[1] == 2);
+//    assert(emptyState->shortestPathUntilNow[2] == 0);
+//    assert(emptyState->visitedNodesUntilNow[0] == 1);
+//    assert(emptyState->visitedNodesUntilNow[1] == 1);
+//    assert(emptyState->visitedNodesUntilNow[2] == 1);
 //
-//
-//
-//
-//
+//    free(realState->shortestPathRes);
+//    free(realState);
+//    free_state(emptyState);
 //    free_agency_matrix(agencyMatrix, citiesNum);
 //}
 
