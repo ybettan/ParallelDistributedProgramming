@@ -397,8 +397,8 @@ void initiallize_array_of_states(int **agencyMatrix, State *state, int citiesNum
                 citiesNum, agencyMatrix);
         assert(son);
 
-        initiallize_array_of_states(agencyMatrix, son, citiesNum, depth+1, maxDepth,
-                arrSize, arrRes);
+        initiallize_array_of_states(agencyMatrix, son, citiesNum, depth+1,
+                maxDepth, arrSize, arrRes);
 
         free_state(son);
     }
@@ -465,7 +465,7 @@ void initiallize_array_of_states(int **agencyMatrix, State *state, int citiesNum
  * this fuction send all it gots, it is not aware that a part of the statesArr
  * stays for root task */
 //FIXME: update statesArr
-int send_to_other_tasks(State **statesArrToOther, int numStates,
+int send_to_other_tasks(State *statesArrToOther, int numStates,
         MPI_Datatype stateTypeName) {
 
     /* get num of tasks */
@@ -486,7 +486,21 @@ int send_to_other_tasks(State **statesArrToOther, int numStates,
     //printf("root : minSendSize = %d\n", minSendSize);
     //printf("root : tasksNumToSendMore = %d\n", tasksNumToSendMore);
 
-    //FIXME: send States insead of this
+    ////FIXME: send States insead of this
+    //int offset = 0;
+    //for (int i=1 ; i<numTasks ; i++) {
+    //    if (i <= tasksNumToSendMore) {
+    //        printf("root : sendig %d elements to task_%d\n", (minSendSize+1), i);
+    //        MPI_Bsend(statesArrToOther+offset, minSendSize+1, stateTypeName, i,
+    //                TAG, MPI_COMM_WORLD);
+    //        offset += minSendSize+1;
+    //    } else {
+    //        printf("root : sendig %d elements to task_%d\n", minSendSize, i);
+    //        MPI_Bsend(statesArrToOther+offset, minSendSize, stateTypeName, i,
+    //                TAG, MPI_COMM_WORLD);
+    //        offset += minSendSize;
+    //    }
+    //}
     int msg[] = {1, 2, 3};
     for (int i=1 ; i<numTasks ; i++) {
         if (i <= tasksNumToSendMore) {
@@ -535,6 +549,7 @@ void rootExec(int citiesNum, int *xCoord, int *yCoord, int *shortestPath) {
     build_state_type(rootState, citiesNum, &stateTypeName);
     printf("root : registerd rootState to MPI library\n");
 
+
     /* compute how deep the root task need to go in order to have enought 
      * States for all CPUs */
     int maxDepth = 1;
@@ -549,17 +564,10 @@ void rootExec(int citiesNum, int *xCoord, int *yCoord, int *shortestPath) {
     }
     printf("root : #CPUs = %d\nroot : maxDepth = %d\n", numTasks, maxDepth);
 
-    //FIXME: update according to new create_array() 
-    /* create array of state to send to the tasks */
-    State **statesArr = malloc(numStates * sizeof(State*));
-    assert(statesArr);
-    for (int i=0 ; i<numStates ; i++) {
-        statesArr[i] = NULL;
-    }
-    //FIXME: this does not free memory anymore
-    /* this will also free rootState memory */
+    State *statesArr = allocate_array_of_states(numStates);
     initiallize_array_of_states(agencyMatrix, rootState, citiesNum, 0, maxDepth,
             numStates, statesArr);
+    free_state(rootState);
     printf("root : created statesArr\n");
 
     /* send the data to other tasks:
@@ -589,8 +597,8 @@ void rootExec(int citiesNum, int *xCoord, int *yCoord, int *shortestPath) {
     ///* gather the result from all other tasks */
     //MPI_Gather(NULL, 1, stateTypeName, res...)
 
-    ///* free memory */
-    //free_array_of_states(statesArr, numStates);
+    /* free memory */
+    free_array_of_states(statesArr, numStates);
 
     ///* now shortestPath hold the best value best result */
 }
@@ -600,6 +608,7 @@ void rootExec(int citiesNum, int *xCoord, int *yCoord, int *shortestPath) {
 void otherExec() {
 
     int rank, rc, count;
+    //State *recvBuff = NULL;
     int *recvBuff = NULL;
     MPI_Status status;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -614,8 +623,10 @@ void otherExec() {
     printf("cpu %d : received %d messages from root\n", rank, count);
 
     /* allocate receive buffer and receive the data from root task */
+    //recvBuff = allocate_array_of_states(count);
     recvBuff = malloc(count * sizeof(int));
     assert(recvBuff);
+    //MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD, &status);
     MPI_Recv(recvBuff, count, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD, &status);
     //FIXME:remove
     //printf("cpu %d : received message [%d]\n", rank, recvBuff[0]);
