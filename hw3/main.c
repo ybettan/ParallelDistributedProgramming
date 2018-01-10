@@ -19,6 +19,12 @@ int main(int argc, char** argv)
 	int citiesNum = 6;
 	int xCoord[] = {1, 3, 5, 9, 2,  3};   
 	int yCoord[] = {1, 3, 5, 7, 9, 11};   
+	//int citiesNum = 10;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20};   
+	//int citiesNum = 14;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27};   
 	//int citiesNum = 18;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27, 29, 30, 31, 32};   
