@@ -242,51 +242,8 @@ void print_state(State *state, int citiesNum) {
 
 
 //-----------------------------------------------------------------------------
-//                        array of Prefixes
+//                        array of States
 //-----------------------------------------------------------------------------
-
-int* allocate_array_of_prefixes(int size, int citiesNum) {
-
-    int *arr = malloc(size * (citiesNum * sizeof(int)));
-    assert(arr);
-
-    return arr;
-}
-
-void free_array_of_prefixes(int *arr) {
-    free(arr);
-}
-
-/* put a first prefix for each task in the array.
- * the first prefix in the array will be [NOT_SET, NOT_SET,...] since root 
- * task does't do work.
- * returns:
- * the next prefix in turn */
-int* init_array_of_prefixes(int *arr, int size, int citiesNum, int prefixLen) {
-
-    /* the first prefix  for root task */
-    for (int i=0 ; i<citiesNum ; i++) {
-        arr[i] = NOT_SET;
-    }
-
-    /* set the first prefix to [0, 1, 2, ...,NOT_SET, NOT_SET, ...] */
-    int *prefix = allocate_empty_array_of_int(citiesNum);
-    for (int i=0 ; i<prefixLen ; i++) {
-        prefix[i] = i;
-    }
-
-    /* insert the states into the array */
-    int *start = arr + citiesNum;
-    int *end = arr + size * citiesNum;
-    for (int *it = start ; it<end ; it += citiesNum) {
-        copy_array_of_int(prefix, it, citiesNum);
-        increas_prefix(prefix, prefixLen, citiesNum);
-    }
-
-    return prefix;
-}
-
-//FIXME: can i remove?
 
 /* since the pointer aritmethic is broken here because of the State struct 
  * definition (shortestPathUntilNow[1] instead of dynamically allocated array),
@@ -394,10 +351,10 @@ int* init_array_of_states(void *arr, int size, int citiesNum, int prefixLen,
     return prefix;
 }
 
+
 //-----------------------------------------------------------------------------
 //                             heuristic
 //-----------------------------------------------------------------------------
-
 
 /* for a given cost of a node, caculate the lower bound of the path using the
  * lightest edge of each vertex that wehere not visited.
@@ -626,8 +583,7 @@ void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int numTasks/*, count*/;
-    //int numTasks, rc/*, count*/;
+    int numTasks, rc;
     //MPI_Status status;
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
 
@@ -635,59 +591,52 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     int minPathLen = INF;
     //shortestPath - define as function input
     
-    /* create numTasks first prefixes - the first prefix is a DEME prefix for root 
-     * NOTE:
-     * at this initial stage we will send only prefixed in collective
-     * communication because the MPI library does'n suppurt MPI_Scatter with
-     * complex data type as State struct */
-    //int *prefixesArr = allocate_array_of_prefixes(numTasks, citiesNum);
-    //int *nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
-    //        PREFIX_LEN(citiesNum));
-    //int *emptyPrefix = allocate_empty_array_of_int(citiesNum);
-
+    /* create (numTasks-1) first states - the first state is an empyt state for
+     * root */
     void *statesArr = allocate_array_of_states(numTasks, citiesNum, agencyMatrix);
     int *nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
             PREFIX_LEN(citiesNum), agencyMatrix);
+
+    /* scatter the buffer - collective communicatioin for the first send */
     int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
     State *emptyState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    MPI_Scatter(statesArr, 1, stateTypeName, emptyState, 1, stateTypeName, 0, MPI_COMM_WORLD);
+    rc = MPI_Scatter(statesArr, 1, stateTypeName, emptyState, 1, stateTypeName,
+            0, MPI_COMM_WORLD);
+    assert(rc == MPI_SUCCESS);
 
-    //////FIXME:remove
-    //int x[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}; 
-    //int y[100] = {0};
-    //int len = 6;
-    //MPI_Scatter(prefixesArr, len, MPI_INT, y, len, MPI_INT, /*root=*/0, MPI_COMM_WORLD);
+    /* start the main routine */
+    bool finished = false;
     
-    /* scatter the buffer - collective communicatioin for the first send */
-    //rc = MPI_Scatter(prefixesArr, citiesNum, MPI_INT, emptyPrefix, citiesNum,
-    //        MPI_INT, /*root=*/0, MPI_COMM_WORLD);
-    //assert(rc);
+    do {
+
+        /* non-blocking broadcast-listening to bound update */
+        //FIXME: implement
+
+        /* get the next state */
+        int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+        copy_array_of_int(nextPrefix, shortestPathUntilNow, citiesNum);
+        State *state = create_state(shortestPathUntilNow[PREFIX_LEN(citiesNum)-1],
+                citiesNum, shortestPathUntilNow, agencyMatrix);
+
+        /* wait for State request */
+        //FIXME: Irsend - ready send without blocking ?
+        
+        /* handle the request */
 
 
-    //do {
 
-    //    /* get the next state */
-
-    //    /* wait for State request - new State, new bound or path result */
-    //    
-    //    /* handle the request */
-
-
-
-    //    break;
-
-    //} while (true);
+    } while ( !finished );
 
 
 
     /* free the memory allocated */
-    //free_array_of_int(nextPrefix);
-    //free_array_of_int(emptyPrefix);
-    //free_array_of_prefixes(prefixesArr);
+    free_array_of_int(nextPrefix);
+    free_state(emptyState);
+    free_array_of_states(statesArr);
 
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
-    printf("cpu %d : continued after barrier\n", 0);
+    //printf("cpu %d : continued after barrier\n", 0);
 
     return minPathLen;
 }
@@ -697,74 +646,70 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int rank/*, count*/;
-    //int rank, rc/*, count*/;
-    //MPI_Status status;
+    int rank, rc;
+    MPI_Status status;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /* receive the first collective send from root */
-    //int *prefix = allocate_empty_array_of_int(citiesNum);
-    //rc = MPI_Scatter(NULL, citiesNum, MPI_INT, prefix, citiesNum, MPI_INT,
-    //        /*root=*/0, MPI_COMM_WORLD);
-    //assert(rc);
-
+    /* allocate a state to receive data */
     int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *emptyState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    MPI_Scatter(NULL, 1, stateTypeName, emptyState, 1, stateTypeName, 0, MPI_COMM_WORLD);
+    State *state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+
+    /* receive the first collective communication */
+    rc = MPI_Scatter(NULL, 1, stateTypeName, state, 1, stateTypeName, 0,
+            MPI_COMM_WORLD);
+    assert(rc == MPI_SUCCESS);
+
     printf("cpu %d received --> ", rank);
-    print_state(emptyState, citiesNum);
+    print_state(state, citiesNum);
     printf("\n");
-    //int len = 6;
-    //int x[100] = {0}; 
-    ////int x;
-    //MPI_Scatter(NULL, len, MPI_INT, &x, len, MPI_INT, /*root=*/0, MPI_COMM_WORLD);
-    //printf("cpu %d received --> ", rank);
-    //print_array_of_int(x, len);
-    //printf("\n");
 
 
+    /* compute the temporary result */
+    int minPathLenLocal = INF;
+    int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
 
-    ///* reciver message size */
-    //int rc1 = MPI_Probe(/*src=*/0, TAG, MPI_COMM_WORLD, &status);
-    //int rc2 = MPI_Get_count(&status, stateTypeName, &count);
-    //assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS);
+    int minPathLenTmp;
+    int *shortestPathTmp = allocate_empty_array_of_int(citiesNum);
 
-    ///* allocate receive buffer and receive the data from root task */
-    //int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
-    //void *recvBuff = malloc(count * elementSize);
-    //assert(recvBuff);
+    bool finished = false;
 
-    //MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
-    //        &status);
+    do {
+        
+        /* non-blocking broadcast-listening to bound update */
+        //FIXME: implement
+        
+        cpu_main(state, citiesNum, agencyMatrix, &minPathLenTmp,
+                shortestPathTmp);
 
-    /* wait for all tasks to receive the data */
+        if (minPathLenTmp < minPathLenLocal) {
+            minPathLenLocal = minPathLenTmp;
+            copy_array_of_int(shortestPathTmp, shortestPathLocal, citiesNum);
+
+            //FIXME: async broadcast minPathLenLocal
+        }
+
+        MPI_Recv(state, 1, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
+                &status);
+
+        /* if the new state is a terminate-state (an empty state) then finish */
+        if (state->vertex == NOT_SET)
+            finished = true;
+
+    } while ( !finished );
+
+
+    /* wait for all tasks to terminate the computatioin */
     MPI_Barrier(MPI_COMM_WORLD);
     //printf("cpu %d : continued after barrier\n", rank);
 
-    ///* compute a sub problems and keep the best one */
-    //int minPathLen = INF;
-    //int pathLenLocal = INF;
-    //int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-    //int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    //State *it = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    //for (int i=0 ; i<count ; i++) {
-    //    copy_state_from_array_of_states(recvBuff, i, citiesNum, it);
-    //    cpu_main(it, citiesNum, agencyMatrix, &pathLenLocal, shortestPathLocal);
-    //    if (pathLenLocal < minPathLen) {
-    //        minPathLen = pathLenLocal;
-    //        copy_array_of_int(shortestPathLocal, shortestPath, citiesNum);
-    //    }
-    //}
-    //free_state(it);
-    //free_array_of_int(shortestPathLocal);
-    //free(recvBuff);
-
-    ///* send the result to root task */
-    //MPI_Gather(shortestPath, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT, 0,
-    //        MPI_COMM_WORLD);
+    /* send the result to root task */
+    MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
+            0, MPI_COMM_WORLD);
 
     /* free memory */
-    //free_array_of_int(prefix);
+    free_state(state);
+    free_array_of_int(shortestPathLocal);
+    free_array_of_int(shortestPathTmp);
 
 }
 
