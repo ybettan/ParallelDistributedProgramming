@@ -773,17 +773,6 @@ int main() {
     assert(prefix[2] == 2);
     assert(prefix[3] == 1);
 
-    //prefix[0] = 3;
-    //prefix[1] = 2;
-    //prefix[2] = 1;
-    //prefix[3] = 0;
-
-    //increas_prefix(prefix, prefixLen, citiesNum);
-    //assert(prefix[0] == NOT_SET);
-    //assert(prefix[1] == NOT_SET);
-    //assert(prefix[2] == NOT_SET);
-    //assert(prefix[3] == NOT_SET);
-
     prefix[0] = 0;
     prefix[1] = 1;
     prefix[2] = 2;
@@ -869,7 +858,11 @@ int main() {
     int yCoord[] = {0, 0, 0, 0, 0, 0};
     int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
     void *statesArr = allocate_array_of_states(numTasks, citiesNum, agencyMatrix);
-    init_array_of_states(statesArr, numTasks, citiesNum, /*prefixLen=*/4, agencyMatrix);
+    int *nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
+            /*prefixLen=*/4, agencyMatrix);
+    int requestedRes[] = {0, 1, 4, 3};
+    assert(are_equal_array_of_int(nextPrefix, requestedRes, /*prefixLen=*/4));
+    free_array_of_int(nextPrefix);
 
     int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
     shortestPathUntilNow[0];
@@ -907,9 +900,16 @@ int main() {
     assert(state->shortestPathUntilNow[2] == 4);
     assert(state->shortestPathUntilNow[3] == 2);
 
+    free_agency_matrix(agencyMatrix, citiesNum);
+
     citiesNum = 4;
     numTasks = 7;
-    init_array_of_states(statesArr, numTasks, citiesNum, /*prefixLen=*/4, agencyMatrix);
+    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+    nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
+            /*prefixLen=*/4, agencyMatrix);
+    int requestedRes2[] = {1, 0, 2, 3};
+    assert(are_equal_array_of_int(nextPrefix, requestedRes2, /*prefixLen=*/4));
+    free_array_of_int(nextPrefix);
 
     copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
     assert(state->vertex == 3);
