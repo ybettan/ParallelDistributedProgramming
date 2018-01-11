@@ -1,4 +1,4 @@
-//#include <mpi.h>
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -9,6 +9,8 @@
 #define NOT_SET -1
 #define ERROR -2
 #define TAG 99
+
+#define PREFIX_LEN(citiesNum)   ((citiesNum)-3)
 
 
 
@@ -462,31 +464,31 @@ void cpu_main(State *state, int citiesNum, int **agencyMatrix, int *minPathLen,
 //                                    MPI
 //-----------------------------------------------------------------------------
 
-///* register State struct into mpi library */
-//void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
-//    
-//    int blockLengths[3] = {1, 1, citiesNum};
-//    MPI_Aint displacements[3];
-//    MPI_Datatype typelist[3] = {MPI_INT, MPI_INT, MPI_INT};
-//    MPI_Aint addresses[4]; //helper array
-//
-//    /* compute displacements */
-//    MPI_Get_address(state, &addresses[0]);
-//    MPI_Get_address(&(state->vertex), &addresses[1]);
-//    MPI_Get_address(&(state->cost), &addresses[2]);
-//    MPI_Get_address(state->shortestPathUntilNow, &addresses[3]);
-//
-//    displacements[0] = addresses[1] - addresses[0];
-//    displacements[1] = addresses[2] - addresses[0];
-//    displacements[2] = addresses[3] - addresses[0];
-//
-//    /* create the derived type */
-//    MPI_Type_create_struct(3, blockLengths, displacements, typelist, newTypeName);
-//
-//    /* commit the new type to mpi library */
-//    MPI_Type_commit(newTypeName);
-//}
-//
+/* register State struct into mpi library */
+void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
+    
+    int blockLengths[3] = {1, 1, citiesNum};
+    MPI_Aint displacements[3];
+    MPI_Datatype typelist[3] = {MPI_INT, MPI_INT, MPI_INT};
+    MPI_Aint addresses[4]; //helper array
+
+    /* compute displacements */
+    MPI_Get_address(state, &addresses[0]);
+    MPI_Get_address(&(state->vertex), &addresses[1]);
+    MPI_Get_address(&(state->cost), &addresses[2]);
+    MPI_Get_address(state->shortestPathUntilNow, &addresses[3]);
+
+    displacements[0] = addresses[1] - addresses[0];
+    displacements[1] = addresses[2] - addresses[0];
+    displacements[2] = addresses[3] - addresses[0];
+
+    /* create the derived type */
+    MPI_Type_create_struct(3, blockLengths, displacements, typelist, newTypeName);
+
+    /* commit the new type to mpi library */
+    MPI_Type_commit(newTypeName);
+}
+
 /////* send citiesNum, xCoord and yCoord from root to all other tasks */
 ////int send_initial_data(int citiesNum, int *xCoord, int *yCoord) {
 ////
@@ -574,398 +576,432 @@ void cpu_main(State *state, int citiesNum, int **agencyMatrix, int *minPathLen,
 ////}
 ////
 ////
-///* the root task send all the data to other tasks, wait to all the data to be
-// * received on other task, compute a sub problem itself, gather the results
-// * of all other tasks and return the best result */
-//int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
-//        int *shortestPath) {
-//
-//    int numTasks/*, count*/;
-//    //MPI_Status status;
-//    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
-//
-//    /* keep the best len found and the best coresponding path */
-//    int minPathLen = INF;
-//    //shortestPath - define as function input
-//    
-//    /* create first (numTasks-1) States */
-//    void *statesArr = allocate_array_of_states(numTasks-1, citiesNum, agencyMatrix);
-//    init_array_of_states(statesArr)
-//    for (int i=0 ; i<numTasks-1)
-//
-//    /* scatter the buffer - collective communicatioin for the first send */
-//
-//    do {
-//
-//        /* get the next state */
-//
-//        /* wait for State request - new State, new bound or path result */
-//        
-//        /* handle the request */
-//
-//
-//
-//        break;
-//
-//    } while (true);
-//
-//
-//
-//    /* free the memory allocated */
-//    free_state(emptyState);
-//    free_array_of_states(statesArr);
-//
-//    /* wait for all tasks to receive the end messages before exiting */
-//    MPI_Barrier(MPI_COMM_WORLD);
-//    printf("cpu %d : continued after barrier\n", 0);
-//
-//    return minPathLen;
-//}
-//
-///* receive the data from the root task, compute a sub problem and return the
-// * best local result to root task */
-//void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
-//        int *shortestPath) {
-//
-//    int rank/*, count*/;
-//    //MPI_Status status;
-//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//
-//    ///* reciver message size */
-//    //int rc1 = MPI_Probe(/*src=*/0, TAG, MPI_COMM_WORLD, &status);
-//    //int rc2 = MPI_Get_count(&status, stateTypeName, &count);
-//    //assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS);
-//
-//    ///* allocate receive buffer and receive the data from root task */
-//    //int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
-//    //void *recvBuff = malloc(count * elementSize);
-//    //assert(recvBuff);
-//
-//    //MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
-//    //        &status);
-//
-//    /* wait for all tasks to receive the data */
-//    MPI_Barrier(MPI_COMM_WORLD);
-//    printf("cpu %d : continued after barrier\n", rank);
-//
-//    ///* compute a sub problems and keep the best one */
-//    //int minPathLen = INF;
-//    //int pathLenLocal = INF;
-//    //int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-//    //int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-//    //State *it = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-//    //for (int i=0 ; i<count ; i++) {
-//    //    copy_state_from_array_of_states(recvBuff, i, citiesNum, it);
-//    //    cpu_main(it, citiesNum, agencyMatrix, &pathLenLocal, shortestPathLocal);
-//    //    if (pathLenLocal < minPathLen) {
-//    //        minPathLen = pathLenLocal;
-//    //        copy_array_of_int(shortestPathLocal, shortestPath, citiesNum);
-//    //    }
-//    //}
-//    //free_state(it);
-//    //free_array_of_int(shortestPathLocal);
-//    //free(recvBuff);
-//
-//    ///* send the result to root task */
-//    //MPI_Gather(shortestPath, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT, 0,
-//    //        MPI_COMM_WORLD);
-//
-//}
-//
-//
-//
-//// The dynamic parellel algorithm main function.
-//int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
-//{
-//    int numTasks, rank/*, rc*/;
-//    MPI_Datatype stateTypeName;
-//
-//    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
-//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//
-//    /* as requested, if the program is called with a signe CPU - exit */
-//    if (numTasks <= 1)
-//        exit(1);
-//
-//    /* create agencyMatrix */
-//    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-//
-//    /* create rootState for registering State struct to mpi library */
-//    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-//    shortestPathUntilNow[0] = 0;
-//    State *rootState = create_state(0, citiesNum, shortestPathUntilNow,
-//            agencyMatrix);
-//
-//    /* register State struct to MPI library */
-//    build_state_type(rootState, citiesNum, &stateTypeName);
-//
-//    /* master-slave routine */
-//    int minPathLen = INF;
-//    if (rank == 0) {
-//        minPathLen = rootExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
-//    } else {
-//        otherExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
-//    }
-//
-//    /* free memory allocated */
-//    free_state(rootState);
-//    free_agency_matrix(agencyMatrix, citiesNum);
-//    MPI_Type_free(&stateTypeName);
-//
-//    /* return the result */
-//    if (rank != 0)
-//        return 0;
-//
-//    return minPathLen;
-//}
+/* the root task send all the data to other tasks, wait to all the data to be
+ * received on other task, compute a sub problem itself, gather the results
+ * of all other tasks and return the best result */
+int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
+        int *shortestPath) {
 
+    int numTasks, rc/*, count*/;
+    //MPI_Status status;
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
 
-
-int main() {
-
-
-    /* are_equal_array_of_int test */
-    int a1[] = {1, 2, 3, 5};
-    int a2[] = {1, 2, 3, 5};
-    assert(are_equal_array_of_int(a1, a2, 4));
-    int a3[] = {0, 2, 3, 5};
-    assert(!are_equal_array_of_int(a1, a3, 4));
-
-
-
-
-    /* increas_prefix test */
-    int prefixLen = 4;
-    int *prefix = allocate_empty_array_of_int(prefixLen);
-    for(int i=0 ; i<prefixLen ; i++) {
-        prefix[i] = i;
-    }
-
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 2);
-    assert(prefix[3] == 3);
-
-    int citiesNum = 4;
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 3);
-    assert(prefix[3] == 2);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 2);
-    assert(prefix[2] == 1);
-    assert(prefix[3] == 3);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 2);
-    assert(prefix[2] == 3);
-    assert(prefix[3] == 1);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 3);
-    assert(prefix[2] == 1);
-    assert(prefix[3] == 2);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 3);
-    assert(prefix[2] == 2);
-    assert(prefix[3] == 1);
-
-    prefix[0] = 0;
-    prefix[1] = 1;
-    prefix[2] = 2;
-    prefix[3] = 3;
-
-    citiesNum = 6;
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 2);
-    assert(prefix[3] == 4);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 2);
-    assert(prefix[3] == 5);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 3);
-    assert(prefix[3] == 2);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 3);
-    assert(prefix[3] == 4);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 3);
-    assert(prefix[3] == 5);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 4);
-    assert(prefix[3] == 2);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 4);
-    assert(prefix[3] == 3);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 4);
-    assert(prefix[3] == 5);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 5);
-    assert(prefix[3] == 2);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 5);
-    assert(prefix[3] == 3);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 1);
-    assert(prefix[2] == 5);
-    assert(prefix[3] == 4);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 2);
-    assert(prefix[2] == 1);
-    assert(prefix[3] == 3);
-    increas_prefix(prefix, prefixLen, citiesNum);
-    assert(prefix[0] == 0);
-    assert(prefix[1] == 2);
-    assert(prefix[2] == 1);
-    assert(prefix[3] == 4);
-
-    free_array_of_int(prefix);
-
-
-
-
-
-    /* init_array_of_states test */
-    int numTasks = 8;
-    citiesNum = 6;
-    int xCoord[] = {0, 1, 2, 3, 4, 5};
-    int yCoord[] = {0, 0, 0, 0, 0, 0};
-    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+    /* keep the best len found and the best coresponding path */
+    int minPathLen = INF;
+    //shortestPath - define as function input
+    
+    /* create first numTasks States - the first one is a deme State for root 
+     * NOTE:
+     * at this initial stage we will send only prefixed in collective
+     * communication because the MPI library does'n suppurt MPI_Gather with
+     * complex data type as State struct */
     void *statesArr = allocate_array_of_states(numTasks, citiesNum, agencyMatrix);
     int *nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
-            /*prefixLen=*/4, agencyMatrix);
-    int requestedRes[] = {0, 1, 4, 3};
-    assert(are_equal_array_of_int(nextPrefix, requestedRes, /*prefixLen=*/4));
-    free_array_of_int(nextPrefix);
+            PREFIX_LEN(citiesNum), agencyMatrix);
 
-    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0];
-    State *state = create_state(0, citiesNum, shortestPathUntilNow, agencyMatrix);
+    //FIXME:remove
+    //int x[] = {0, 1, 2, 3, 4, 5, 6, 7}; 
+    //int y;
+    //MPI_Scatter(x, 1, MPI_INT, &y, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD);
     
-    copy_state_from_array_of_states(statesArr, 0, citiesNum, state);
-    assert(state->vertex == NOT_SET);
-    assert(state->cost == 0);
-    assert(state->shortestPathUntilNow[0] == NOT_SET);
-    assert(state->shortestPathUntilNow[1] == NOT_SET);
-    assert(state->shortestPathUntilNow[2] == NOT_SET);
-    assert(state->shortestPathUntilNow[3] == NOT_SET);
+    /* scatter the buffer - collective communicatioin for the first send */
+    //int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    //State *emptyState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    //rc = MPI_Scatter(statesArr, 1, stateTypeName, emptyState, 1, stateTypeName,
+    //        /*root=*/0, MPI_COMM_WORLD);
+    //assert(rc);
 
-    copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
-    assert(state->vertex == 3);
-    assert(state->cost == 9);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 1);
-    assert(state->shortestPathUntilNow[2] == 2);
-    assert(state->shortestPathUntilNow[3] == 3);
 
-    copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
-    assert(state->vertex == 4);
-    assert(state->cost == 11);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 1);
-    assert(state->shortestPathUntilNow[2] == 2);
-    assert(state->shortestPathUntilNow[3] == 4);
-    
-    copy_state_from_array_of_states(statesArr, 7, citiesNum, state);
-    assert(state->vertex == 2);
-    assert(state->cost == 15);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 1);
-    assert(state->shortestPathUntilNow[2] == 4);
-    assert(state->shortestPathUntilNow[3] == 2);
+    //do {
 
-    free_agency_matrix(agencyMatrix, citiesNum);
+    //    /* get the next state */
 
-    citiesNum = 4;
-    numTasks = 7;
-    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
-            /*prefixLen=*/4, agencyMatrix);
-    int requestedRes2[] = {1, 0, 2, 3};
-    assert(are_equal_array_of_int(nextPrefix, requestedRes2, /*prefixLen=*/4));
+    //    /* wait for State request - new State, new bound or path result */
+    //    
+    //    /* handle the request */
+
+
+
+    //    break;
+
+    //} while (true);
+
+
+
+    /* free the memory allocated */
     free_array_of_int(nextPrefix);
-
-    copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
-    assert(state->vertex == 3);
-    assert(state->cost == 9);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 1);
-    assert(state->shortestPathUntilNow[2] == 2);
-    assert(state->shortestPathUntilNow[3] == 3);
-
-    copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
-    assert(state->vertex == 2);
-    assert(state->cost == 11);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 1);
-    assert(state->shortestPathUntilNow[2] == 3);
-    assert(state->shortestPathUntilNow[3] == 2);
-
-    copy_state_from_array_of_states(statesArr, 3, citiesNum, state);
-    assert(state->vertex == 3);
-    assert(state->cost == 13);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 2);
-    assert(state->shortestPathUntilNow[2] == 1);
-    assert(state->shortestPathUntilNow[3] == 3);
-
-    copy_state_from_array_of_states(statesArr, 4, citiesNum, state);
-    assert(state->vertex == 1);
-    assert(state->cost == 13);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 2);
-    assert(state->shortestPathUntilNow[2] == 3);
-    assert(state->shortestPathUntilNow[3] == 1);
-
-    copy_state_from_array_of_states(statesArr, 5, citiesNum, state);
-    assert(state->vertex == 2);
-    assert(state->cost == 15);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 3);
-    assert(state->shortestPathUntilNow[2] == 1);
-    assert(state->shortestPathUntilNow[3] == 2);
-
-    copy_state_from_array_of_states(statesArr, 6, citiesNum, state);
-    assert(state->vertex == 1);
-    assert(state->cost == 13);
-    assert(state->shortestPathUntilNow[0] == 0);
-    assert(state->shortestPathUntilNow[1] == 3);
-    assert(state->shortestPathUntilNow[2] == 2);
-    assert(state->shortestPathUntilNow[3] == 1);
-
-    free_state(state);
     free_array_of_states(statesArr);
-    free_agency_matrix(agencyMatrix, citiesNum);
+
+    /* wait for all tasks to receive the end messages before exiting */
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("cpu %d : continued after barrier\n", 0);
+
+    return minPathLen;
+}
+
+/* receive the data from the root task, compute a sub problem and return the
+ * best local result to root task */
+void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
+        int *shortestPath) {
+
+    int rank, rc/*, count*/;
+    MPI_Status status;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    /* receive the first collective send from root */
+    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    State *state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    rc = MPI_Scatter(NULL, 1, stateTypeName, state, 1, stateTypeName,
+            /*root=*/0, MPI_COMM_WORLD);
+    assert(rc);
+    //printf("cpu %d received ", rank);
+    //print_state(state, citiesNum);
+    //printf("\n");
+    //int x[] = {0, 0, 0, 0, 0, 0, 0, 0}; 
+    //int x;
+    //MPI_Scatter(NULL, 1, MPI_INT, &x, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD);
+    //printf("cpu %d received --> %d\n", rank, x);
 
 
+
+    ///* reciver message size */
+    //int rc1 = MPI_Probe(/*src=*/0, TAG, MPI_COMM_WORLD, &status);
+    //int rc2 = MPI_Get_count(&status, stateTypeName, &count);
+    //assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS);
+
+    ///* allocate receive buffer and receive the data from root task */
+    //int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
+    //void *recvBuff = malloc(count * elementSize);
+    //assert(recvBuff);
+
+    //MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
+    //        &status);
+
+    /* wait for all tasks to receive the data */
+    MPI_Barrier(MPI_COMM_WORLD);
+    //printf("cpu %d : continued after barrier\n", rank);
+
+    ///* compute a sub problems and keep the best one */
+    //int minPathLen = INF;
+    //int pathLenLocal = INF;
+    //int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
+    //int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    //State *it = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    //for (int i=0 ; i<count ; i++) {
+    //    copy_state_from_array_of_states(recvBuff, i, citiesNum, it);
+    //    cpu_main(it, citiesNum, agencyMatrix, &pathLenLocal, shortestPathLocal);
+    //    if (pathLenLocal < minPathLen) {
+    //        minPathLen = pathLenLocal;
+    //        copy_array_of_int(shortestPathLocal, shortestPath, citiesNum);
+    //    }
+    //}
+    //free_state(it);
+    //free_array_of_int(shortestPathLocal);
+    //free(recvBuff);
+
+    ///* send the result to root task */
+    //MPI_Gather(shortestPath, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT, 0,
+    //        MPI_COMM_WORLD);
+
+    /* free memory */
+    free_state(state);
 
 }
+
+
+
+// The dynamic parellel algorithm main function.
+int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
+{
+    int numTasks, rank/*, rc*/;
+    MPI_Datatype stateTypeName;
+
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    /* as requested, if the program is called with a signe CPU - exit */
+    if (numTasks <= 1)
+        exit(1);
+
+    /* create agencyMatrix */
+    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+
+    /* create rootState for registering State struct to mpi library */
+    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+    shortestPathUntilNow[0] = 0;
+    State *rootState = create_state(0, citiesNum, shortestPathUntilNow,
+            agencyMatrix);
+
+    /* register State struct to MPI library */
+    build_state_type(rootState, citiesNum, &stateTypeName);
+
+    /* master-slave routine */
+    int minPathLen = INF;
+    if (rank == 0) {
+        minPathLen = rootExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
+    } else {
+        otherExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
+    }
+
+    /* free memory allocated */
+    free_state(rootState);
+    free_agency_matrix(agencyMatrix, citiesNum);
+    MPI_Type_free(&stateTypeName);
+
+    /* return the result */
+    if (rank != 0)
+        return 0;
+
+    return minPathLen;
+}
+
+
+
+//int main() {
+//
+//
+//    /* are_equal_array_of_int test */
+//    int a1[] = {1, 2, 3, 5};
+//    int a2[] = {1, 2, 3, 5};
+//    assert(are_equal_array_of_int(a1, a2, 4));
+//    int a3[] = {0, 2, 3, 5};
+//    assert(!are_equal_array_of_int(a1, a3, 4));
+//
+//
+//
+//
+//    /* increas_prefix test */
+//    int prefixLen = 4;
+//    int *prefix = allocate_empty_array_of_int(prefixLen);
+//    for(int i=0 ; i<prefixLen ; i++) {
+//        prefix[i] = i;
+//    }
+//
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 2);
+//    assert(prefix[3] == 3);
+//
+//    int citiesNum = 4;
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 3);
+//    assert(prefix[3] == 2);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 2);
+//    assert(prefix[2] == 1);
+//    assert(prefix[3] == 3);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 2);
+//    assert(prefix[2] == 3);
+//    assert(prefix[3] == 1);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 3);
+//    assert(prefix[2] == 1);
+//    assert(prefix[3] == 2);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 3);
+//    assert(prefix[2] == 2);
+//    assert(prefix[3] == 1);
+//
+//    prefix[0] = 0;
+//    prefix[1] = 1;
+//    prefix[2] = 2;
+//    prefix[3] = 3;
+//
+//    citiesNum = 6;
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 2);
+//    assert(prefix[3] == 4);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 2);
+//    assert(prefix[3] == 5);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 3);
+//    assert(prefix[3] == 2);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 3);
+//    assert(prefix[3] == 4);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 3);
+//    assert(prefix[3] == 5);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 4);
+//    assert(prefix[3] == 2);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 4);
+//    assert(prefix[3] == 3);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 4);
+//    assert(prefix[3] == 5);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 5);
+//    assert(prefix[3] == 2);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 5);
+//    assert(prefix[3] == 3);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 1);
+//    assert(prefix[2] == 5);
+//    assert(prefix[3] == 4);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 2);
+//    assert(prefix[2] == 1);
+//    assert(prefix[3] == 3);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == 0);
+//    assert(prefix[1] == 2);
+//    assert(prefix[2] == 1);
+//    assert(prefix[3] == 4);
+//
+//    free_array_of_int(prefix);
+//
+//
+//
+//
+//
+//    /* init_array_of_states test */
+//    int numTasks = 8;
+//    citiesNum = 6;
+//    int xCoord[] = {0, 1, 2, 3, 4, 5};
+//    int yCoord[] = {0, 0, 0, 0, 0, 0};
+//    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    void *statesArr = allocate_array_of_states(numTasks, citiesNum, agencyMatrix);
+//    int *nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
+//            /*prefixLen=*/4, agencyMatrix);
+//    int requestedRes[] = {0, 1, 4, 3};
+//    assert(are_equal_array_of_int(nextPrefix, requestedRes, /*prefixLen=*/4));
+//    free_array_of_int(nextPrefix);
+//
+//    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0];
+//    State *state = create_state(0, citiesNum, shortestPathUntilNow, agencyMatrix);
+//    
+//    copy_state_from_array_of_states(statesArr, 0, citiesNum, state);
+//    assert(state->vertex == NOT_SET);
+//    assert(state->cost == 0);
+//    assert(state->shortestPathUntilNow[0] == NOT_SET);
+//    assert(state->shortestPathUntilNow[1] == NOT_SET);
+//    assert(state->shortestPathUntilNow[2] == NOT_SET);
+//    assert(state->shortestPathUntilNow[3] == NOT_SET);
+//
+//    copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
+//    assert(state->vertex == 3);
+//    assert(state->cost == 9);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 1);
+//    assert(state->shortestPathUntilNow[2] == 2);
+//    assert(state->shortestPathUntilNow[3] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
+//    assert(state->vertex == 4);
+//    assert(state->cost == 11);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 1);
+//    assert(state->shortestPathUntilNow[2] == 2);
+//    assert(state->shortestPathUntilNow[3] == 4);
+//    
+//    copy_state_from_array_of_states(statesArr, 7, citiesNum, state);
+//    assert(state->vertex == 2);
+//    assert(state->cost == 15);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 1);
+//    assert(state->shortestPathUntilNow[2] == 4);
+//    assert(state->shortestPathUntilNow[3] == 2);
+//
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//    citiesNum = 4;
+//    numTasks = 7;
+//    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
+//            /*prefixLen=*/4, agencyMatrix);
+//    int requestedRes2[] = {1, 0, 2, 3};
+//    assert(are_equal_array_of_int(nextPrefix, requestedRes2, /*prefixLen=*/4));
+//    free_array_of_int(nextPrefix);
+//
+//    copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
+//    assert(state->vertex == 3);
+//    assert(state->cost == 9);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 1);
+//    assert(state->shortestPathUntilNow[2] == 2);
+//    assert(state->shortestPathUntilNow[3] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
+//    assert(state->vertex == 2);
+//    assert(state->cost == 11);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 1);
+//    assert(state->shortestPathUntilNow[2] == 3);
+//    assert(state->shortestPathUntilNow[3] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 3, citiesNum, state);
+//    assert(state->vertex == 3);
+//    assert(state->cost == 13);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 2);
+//    assert(state->shortestPathUntilNow[2] == 1);
+//    assert(state->shortestPathUntilNow[3] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 4, citiesNum, state);
+//    assert(state->vertex == 1);
+//    assert(state->cost == 13);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 2);
+//    assert(state->shortestPathUntilNow[2] == 3);
+//    assert(state->shortestPathUntilNow[3] == 1);
+//
+//    copy_state_from_array_of_states(statesArr, 5, citiesNum, state);
+//    assert(state->vertex == 2);
+//    assert(state->cost == 15);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 3);
+//    assert(state->shortestPathUntilNow[2] == 1);
+//    assert(state->shortestPathUntilNow[3] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 6, citiesNum, state);
+//    assert(state->vertex == 1);
+//    assert(state->cost == 13);
+//    assert(state->shortestPathUntilNow[0] == 0);
+//    assert(state->shortestPathUntilNow[1] == 3);
+//    assert(state->shortestPathUntilNow[2] == 2);
+//    assert(state->shortestPathUntilNow[3] == 1);
+//
+//    free_state(state);
+//    free_array_of_states(statesArr);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//}
 
 
 
