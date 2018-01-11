@@ -48,6 +48,71 @@ bool is_in(int num, int *arr, int size) {
     return false;
 }
 
+/* receive a prefix array and update it to the next prefix.
+ * first call with depth=0, foundCurrentPrefix=false and vertex=0 */
+void increas_prefix(int *oldPrefix, int prefixLen, int citiesNum, int depth,
+        bool *foundCurrentPrefix, int *newPrefix) {
+
+    if  (depth == prefixLen) { 
+        if (vertex == prefix[prefixLen-1])
+            *foundCurrentPrefix = true;
+        else if (*foundCurrentPrefix)
+               prefix[depth] = vertex; 
+        return;
+    }
+
+
+    for (int i=0 ; i<citiesNum ; i++) {
+        if (i == oldPrefix[depth]) {
+            newPrefix[depth] = oldPrefix[depth];
+        }
+    }
+    ///* if we have reached required depth insert states to arr */
+    //if (depth == maxDepth) {
+
+    //    /* created a tmp State to old the result from the array */
+    //    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    //    State *tmp = create_state(NOT_SET, citiesNum, emptyIntArr,
+    //            agencyMatrix);
+    //    for (int i=0 ; i<size ; i++) {
+    //        copy_state_from_array_of_states(arr, i, citiesNum, tmp);
+    //        if (tmp->vertex == NOT_SET) {
+    //            copy_state_into_array_of_states(arr, i, citiesNum, state); 
+    //            free_state(tmp);
+    //            return;
+    //        }
+    //    }
+    //    free_state(tmp);
+    //}
+
+    //for (int i=0 ; i<citiesNum ; i++) {
+
+    //    if (is_in(i, state->shortestPathUntilNow, citiesNum))
+    //        continue;
+
+    //    /* create shortestPathUntilNow array */
+    //    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+    //    copy_array_of_int(state->shortestPathUntilNow, shortestPathUntilNow,
+    //            citiesNum);
+    //    for (int k=0 ; k<citiesNum ; k++) {
+    //        if(state->shortestPathUntilNow[k] == NOT_SET) {
+    //            shortestPathUntilNow[k] = i;
+    //            break;
+    //        }
+    //    }
+
+    //    /* create the Son state */
+    //    State *son = create_state(i, citiesNum, shortestPathUntilNow,
+    //            agencyMatrix);
+    //    assert(son);
+
+    //    init_array_of_states(arr, size, citiesNum, son, depth+1,
+    //            maxDepth, agencyMatrix);
+
+    //    free_state(son);
+    //}
+}
+
 //-----------------------------------------------------------------------------
 //                             agency matrix
 //-----------------------------------------------------------------------------
@@ -164,6 +229,7 @@ bool is_leaf(State *state, int citiesNum) {
 }
 
 
+
 //-----------------------------------------------------------------------------
 //                           array of States
 //-----------------------------------------------------------------------------
@@ -235,56 +301,98 @@ void free_array_of_states(void *arr) {
     free(arr);
 }
 
-/* initiallize the array of states to be sent to other tasks 
- * NOTE:
- * arr is the result and must be initiallized with all vertex=NOT_SET */
-void init_array_of_states(void *arr, int size, int citiesNum, State *state,
-        int depth, int maxDepth, int **agencyMatrix) {
+///* initiallize the array of states to be sent to other tasks 
+// * NOTE:
+// * arr is the result and must be initiallized with all vertex=NOT_SET */
 
-    /* if we have reached required depth insert states to arr */
-    if (depth == maxDepth) {
+/* put a first State for each task in the array.
+ * arr[0] will contain an empty State since root task does't do work 
+ * returns:
+ * the next prefix in turn */
+int* init_array_of_states(void *arr, int size, int citiesNum, int **agencyMatrix) {
 
-        /* created a tmp State to old the result from the array */
-        int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-        State *tmp = create_state(NOT_SET, citiesNum, emptyIntArr,
-                agencyMatrix);
-        for (int i=0 ; i<size ; i++) {
-            copy_state_from_array_of_states(arr, i, citiesNum, tmp);
-            if (tmp->vertex == NOT_SET) {
-                copy_state_into_array_of_states(arr, i, citiesNum, state); 
-                free_state(tmp);
-                return;
-            }
-        }
-        free_state(tmp);
-    }
+    int numTasks;
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
 
+    /* the first state is an empty state for root task */
+    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    State *emptyState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    copy_state_into_array_of_states(arr, 0, citiesNum, emptyState);
+
+    /* set the first prefix to [0, 1, 2, 3, ...] */
+    int *prefix = allocate_empty_array_of_int(citiesNum);
     for (int i=0 ; i<citiesNum ; i++) {
-
-        if (is_in(i, state->shortestPathUntilNow, citiesNum))
-            continue;
-
-        /* create shortestPathUntilNow array */
-        int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-        copy_array_of_int(state->shortestPathUntilNow, shortestPathUntilNow,
-                citiesNum);
-        for (int k=0 ; k<citiesNum ; k++) {
-            if(state->shortestPathUntilNow[k] == NOT_SET) {
-                shortestPathUntilNow[k] = i;
-                break;
-            }
-        }
-
-        /* create the Son state */
-        State *son = create_state(i, citiesNum, shortestPathUntilNow,
-                agencyMatrix);
-        assert(son);
-
-        init_array_of_states(arr, size, citiesNum, son, depth+1,
-                maxDepth, agencyMatrix);
-
-        free_state(son);
+        prefix[i] = i;
     }
+
+    /* insert the states into the array */
+    for (int i=1 ; i<numTasks ; i++) {
+
+        /* find the vertex and create the state */
+        int k;
+        for (k=0 ; k<citiesNum ; k++) {
+           if (prefix[k] == NOT_SET)
+               break;
+        }
+        State *nextState = create_state(prefix[k-1], citiesNum, prefix,
+                agencyMatrix);
+
+        /* insert the state into the array */
+        copy_state_into_array_of_states(arr, i, citiesNum, nextState);
+        free_state(nextState);
+
+        get_next_prefix(prefix, citiesNum, prefix);
+    }
+
+    /* free memory */
+    free_state(emptyState);
+
+    return prefix;
+
+    ///* if we have reached required depth insert states to arr */
+    //if (depth == maxDepth) {
+
+    //    /* created a tmp State to old the result from the array */
+    //    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    //    State *tmp = create_state(NOT_SET, citiesNum, emptyIntArr,
+    //            agencyMatrix);
+    //    for (int i=0 ; i<size ; i++) {
+    //        copy_state_from_array_of_states(arr, i, citiesNum, tmp);
+    //        if (tmp->vertex == NOT_SET) {
+    //            copy_state_into_array_of_states(arr, i, citiesNum, state); 
+    //            free_state(tmp);
+    //            return;
+    //        }
+    //    }
+    //    free_state(tmp);
+    //}
+
+    //for (int i=0 ; i<citiesNum ; i++) {
+
+    //    if (is_in(i, state->shortestPathUntilNow, citiesNum))
+    //        continue;
+
+    //    /* create shortestPathUntilNow array */
+    //    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+    //    copy_array_of_int(state->shortestPathUntilNow, shortestPathUntilNow,
+    //            citiesNum);
+    //    for (int k=0 ; k<citiesNum ; k++) {
+    //        if(state->shortestPathUntilNow[k] == NOT_SET) {
+    //            shortestPathUntilNow[k] = i;
+    //            break;
+    //        }
+    //    }
+
+    //    /* create the Son state */
+    //    State *son = create_state(i, citiesNum, shortestPathUntilNow,
+    //            agencyMatrix);
+    //    assert(son);
+
+    //    init_array_of_states(arr, size, citiesNum, son, depth+1,
+    //            maxDepth, agencyMatrix);
+
+    //    free_state(son);
+    //}
 }
 
 //-----------------------------------------------------------------------------
@@ -426,106 +534,113 @@ void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
     MPI_Type_commit(newTypeName);
 }
 
-/* send citiesNum, xCoord and yCoord from root to all other tasks */
-int send_initial_data(int citiesNum, int *xCoord, int *yCoord) {
-
-    int numTasks, rc1, rc2, rc3;
-    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
-
-    int bsendBuffSize = numTasks*((2*citiesNum+1)*sizeof(int))+MPI_BSEND_OVERHEAD;
-    int *bsendBuff = malloc(bsendBuffSize);
-    assert(bsendBuff);
-    MPI_Buffer_attach(bsendBuff, bsendBuffSize);
-
-    for (int i=1 ; i<numTasks ; i++) {
-        rc1 = MPI_Bsend(&citiesNum, 1, MPI_INT, i, TAG, MPI_COMM_WORLD);
-        rc2 = MPI_Bsend(xCoord, citiesNum, MPI_INT, i, TAG, MPI_COMM_WORLD);
-        rc3 = MPI_Bsend(yCoord, citiesNum, MPI_INT, i, TAG, MPI_COMM_WORLD);
-        assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS && rc3 == MPI_SUCCESS);
-    }
-    free(bsendBuff);
-    return MPI_SUCCESS;
-}
-
-/* receive citiesNum, xCoord and yCoord from root 
- * NOTE:
- * citiesNum, xCoord and yCoord are only variable names and we assume they
- * will containe the correct values only after this function as requested 
- * in the PDF exercise */
-int receive_initial_data(int *citiesNum, int *xCoord, int *yCoord) {
-
-    MPI_Status status;
-    int rank, rc1, rc2, rc3;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    rc1 = MPI_Recv(citiesNum, 1, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
-            &status);
-    rc2 = MPI_Recv(xCoord, *citiesNum, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
-            &status);
-    rc3 = MPI_Recv(yCoord, *citiesNum, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
-            &status);
-
-    assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS && rc3 == MPI_SUCCESS);
-    return MPI_SUCCESS;
-}
-
-
-/* send the data to other tasks - rank{1, 2,...numTasks}.
- * NOTE:
- * this fuction send all it gots, it is not aware that a part of the Arr
- * stays for root task */
-int send_data(State *dataArr, int numStates, int citiesNum,
-        int numStatesForRootTask, MPI_Datatype stateTypeName) {
-
-    /* get num of tasks */
-    int numTasks;
-    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
-
-    int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
-    int numStatesToSend = numStates - numStatesForRootTask;
-
-    /* allocate buffers for MPI_Bsend */
-    int bsendBuffSize = numStatesToSend * elementSize + MPI_BSEND_OVERHEAD;
-    int *bsendBuff = malloc(bsendBuffSize);
-    assert(bsendBuff);
-
-    /* attach buffer for MPI_Bsend() */
-    MPI_Buffer_attach(bsendBuff, bsendBuffSize);
-
-    int minSendSize = numStatesToSend / (numTasks-1);
-    int tasksNumToSendMore = numStatesToSend % (numTasks-1);
-
-    void *start = (char*)dataArr + numStatesForRootTask * elementSize;
-    for (int i=1 ; i<numTasks ; i++) {
-        if (i <= tasksNumToSendMore) {
-            MPI_Bsend(start, minSendSize+1, stateTypeName, i, TAG, MPI_COMM_WORLD);
-            start = (char*)start + (minSendSize+1) * elementSize;
-        } else {
-            MPI_Bsend(start, minSendSize, stateTypeName, i, TAG, MPI_COMM_WORLD);
-            start = (char*)start + minSendSize * elementSize;
-        }
-    }
-
-    /* free memeory allocated */
-    free(bsendBuff);
-
-    return MPI_SUCCESS;
-}
-
-
+///* send citiesNum, xCoord and yCoord from root to all other tasks */
+//int send_initial_data(int citiesNum, int *xCoord, int *yCoord) {
+//
+//    int numTasks, rc1, rc2, rc3;
+//    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+//
+//    int bsendBuffSize = numTasks*((2*citiesNum+1)*sizeof(int))+MPI_BSEND_OVERHEAD;
+//    int *bsendBuff = malloc(bsendBuffSize);
+//    assert(bsendBuff);
+//    MPI_Buffer_attach(bsendBuff, bsendBuffSize);
+//
+//    for (int i=1 ; i<numTasks ; i++) {
+//        rc1 = MPI_Bsend(&citiesNum, 1, MPI_INT, i, TAG, MPI_COMM_WORLD);
+//        rc2 = MPI_Bsend(xCoord, citiesNum, MPI_INT, i, TAG, MPI_COMM_WORLD);
+//        rc3 = MPI_Bsend(yCoord, citiesNum, MPI_INT, i, TAG, MPI_COMM_WORLD);
+//        assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS && rc3 == MPI_SUCCESS);
+//    }
+//    free(bsendBuff);
+//    return MPI_SUCCESS;
+//}
+//
+///* receive citiesNum, xCoord and yCoord from root 
+// * NOTE:
+// * citiesNum, xCoord and yCoord are only variable names and we assume they
+// * will containe the correct values only after this function as requested 
+// * in the PDF exercise */
+//int receive_initial_data(int *citiesNum, int *xCoord, int *yCoord) {
+//
+//    MPI_Status status;
+//    int rank, rc1, rc2, rc3;
+//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//
+//    rc1 = MPI_Recv(citiesNum, 1, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
+//            &status);
+//    rc2 = MPI_Recv(xCoord, *citiesNum, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
+//            &status);
+//    rc3 = MPI_Recv(yCoord, *citiesNum, MPI_INT, /*src=*/0, TAG, MPI_COMM_WORLD,
+//            &status);
+//
+//    assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS && rc3 == MPI_SUCCESS);
+//    return MPI_SUCCESS;
+//}
+//
+//
+///* send the data to other tasks - rank{1, 2,...numTasks}.
+// * NOTE:
+// * this fuction send all it gots, it is not aware that a part of the Arr
+// * stays for root task */
+//int send_data(State *dataArr, int numStates, int citiesNum,
+//        int numStatesForRootTask, MPI_Datatype stateTypeName) {
+//
+//    /* get num of tasks */
+//    int numTasks;
+//    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+//
+//    int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
+//    int numStatesToSend = numStates - numStatesForRootTask;
+//
+//    /* allocate buffers for MPI_Bsend */
+//    int bsendBuffSize = numStatesToSend * elementSize + MPI_BSEND_OVERHEAD;
+//    int *bsendBuff = malloc(bsendBuffSize);
+//    assert(bsendBuff);
+//
+//    /* attach buffer for MPI_Bsend() */
+//    MPI_Buffer_attach(bsendBuff, bsendBuffSize);
+//
+//    int minSendSize = numStatesToSend / (numTasks-1);
+//    int tasksNumToSendMore = numStatesToSend % (numTasks-1);
+//
+//    void *start = (char*)dataArr + numStatesForRootTask * elementSize;
+//    for (int i=1 ; i<numTasks ; i++) {
+//        if (i <= tasksNumToSendMore) {
+//            MPI_Bsend(start, minSendSize+1, stateTypeName, i, TAG, MPI_COMM_WORLD);
+//            start = (char*)start + (minSendSize+1) * elementSize;
+//        } else {
+//            MPI_Bsend(start, minSendSize, stateTypeName, i, TAG, MPI_COMM_WORLD);
+//            start = (char*)start + minSendSize * elementSize;
+//        }
+//    }
+//
+//    /* free memeory allocated */
+//    free(bsendBuff);
+//
+//    return MPI_SUCCESS;
+//}
+//
+//
 /* the root task send all the data to other tasks, wait to all the data to be
  * received on other task, compute a sub problem itself, gather the results
  * of all other tasks and return the best result */
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
+    int numTasks/*, count*/;
+    //MPI_Status status;
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+
     /* keep the best len found and the best coresponding path */
     int minPathLen = INF;
     //shortestPath - define as function input
     
     /* create first (numTasks-1) States */
+    void *statesArr = allocate_array_of_states(numTasks-1, citiesNum, agencyMatrix);
+    init_array_of_states(statesArr)
+    for (int i=0 ; i<numTasks-1)
 
-    /* scatter the buffer */
+    /* scatter the buffer - collective communicatioin for the first send */
 
     do {
 
@@ -535,15 +650,21 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         
         /* handle the request */
 
-    } while (true)
+
+
+        break;
+
+    } while (true);
 
 
 
     /* free the memory allocated */
+    free_state(emptyState);
     free_array_of_states(statesArr);
 
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
+    printf("cpu %d : continued after barrier\n", 0);
 
     return minPathLen;
 }
@@ -553,47 +674,48 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int rank, count;
-    MPI_Status status;
+    int rank/*, count*/;
+    //MPI_Status status;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /* reciver message size */
-    int rc1 = MPI_Probe(/*src=*/0, TAG, MPI_COMM_WORLD, &status);
-    int rc2 = MPI_Get_count(&status, stateTypeName, &count);
-    assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS);
+    ///* reciver message size */
+    //int rc1 = MPI_Probe(/*src=*/0, TAG, MPI_COMM_WORLD, &status);
+    //int rc2 = MPI_Get_count(&status, stateTypeName, &count);
+    //assert(rc1 == MPI_SUCCESS && rc2 == MPI_SUCCESS);
 
-    /* allocate receive buffer and receive the data from root task */
-    int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
-    void *recvBuff = malloc(count * elementSize);
-    assert(recvBuff);
+    ///* allocate receive buffer and receive the data from root task */
+    //int elementSize = sizeof(State) + (citiesNum-1) * sizeof(int);
+    //void *recvBuff = malloc(count * elementSize);
+    //assert(recvBuff);
 
-    MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
-            &status);
+    //MPI_Recv(recvBuff, count, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
+    //        &status);
 
     /* wait for all tasks to receive the data */
     MPI_Barrier(MPI_COMM_WORLD);
+    printf("cpu %d : continued after barrier\n", rank);
 
-    /* compute a sub problems and keep the best one */
-    int minPathLen = INF;
-    int pathLenLocal = INF;
-    int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *it = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    for (int i=0 ; i<count ; i++) {
-        copy_state_from_array_of_states(recvBuff, i, citiesNum, it);
-        cpu_main(it, citiesNum, agencyMatrix, &pathLenLocal, shortestPathLocal);
-        if (pathLenLocal < minPathLen) {
-            minPathLen = pathLenLocal;
-            copy_array_of_int(shortestPathLocal, shortestPath, citiesNum);
-        }
-    }
-    free_state(it);
-    free_array_of_int(shortestPathLocal);
-    free(recvBuff);
+    ///* compute a sub problems and keep the best one */
+    //int minPathLen = INF;
+    //int pathLenLocal = INF;
+    //int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
+    //int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    //State *it = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    //for (int i=0 ; i<count ; i++) {
+    //    copy_state_from_array_of_states(recvBuff, i, citiesNum, it);
+    //    cpu_main(it, citiesNum, agencyMatrix, &pathLenLocal, shortestPathLocal);
+    //    if (pathLenLocal < minPathLen) {
+    //        minPathLen = pathLenLocal;
+    //        copy_array_of_int(shortestPathLocal, shortestPath, citiesNum);
+    //    }
+    //}
+    //free_state(it);
+    //free_array_of_int(shortestPathLocal);
+    //free(recvBuff);
 
-    /* send the result to root task */
-    MPI_Gather(shortestPath, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT, 0,
-            MPI_COMM_WORLD);
+    ///* send the result to root task */
+    //MPI_Gather(shortestPath, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT, 0,
+    //        MPI_COMM_WORLD);
 
 }
 
@@ -602,7 +724,7 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 // The dynamic parellel algorithm main function.
 int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 {
-    int numTasks, rank, rc;
+    int numTasks, rank/*, rc*/;
     MPI_Datatype stateTypeName;
 
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
@@ -614,7 +736,6 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 
     /* create agencyMatrix */
     int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    printf("agencyMatrix created\n");
 
     /* create rootState for registering State struct to mpi library */
     int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
@@ -624,15 +745,14 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 
     /* register State struct to MPI library */
     build_state_type(rootState, citiesNum, &stateTypeName);
-    printf("stateType have been register to the MPI library\n");
 
-    ///* master-slave routine */
-    //int minPathLen;
-    //if (rank == 0) {
-    //    minPathLen = rootExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
-    //} else {
-    //    otherExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
-    //}
+    /* master-slave routine */
+    int minPathLen = INF;
+    if (rank == 0) {
+        minPathLen = rootExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
+    } else {
+        otherExec(citiesNum, agencyMatrix, stateTypeName, shortestPath);
+    }
 
     /* free memory allocated */
     free_state(rootState);
