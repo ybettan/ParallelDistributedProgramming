@@ -11,6 +11,7 @@
 #define TAG 99
 #define BOUND_TAG 100
 #define JOB_TAG 101
+#define JOB_REQUEST_TAG 102
 
 #define PREFIX_LEN(citiesNum)   ((citiesNum)-3)
 #define MIN(a, b)   (((a) < (b)) ? (a) : (b))
@@ -413,7 +414,6 @@ void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
 /* start a async listeninig to new bound updates */
 void listen_bound_update_async(MPI_Request *request, int *newBound) {
 
-    int minPathLenTmp;
     int rc = MPI_Irecv(newBound, 1, MPI_INT, MPI_ANY_SOURCE, BOUND_TAG,
             MPI_COMM_WORLD, request); 
     assert(rc == MPI_SUCCESS);
@@ -423,7 +423,7 @@ void listen_bound_update_async(MPI_Request *request, int *newBound) {
 void listen_job_request_async(MPI_Request *request) {
 
     int jobTmp;
-    int rc = MPI_Irecv(&jobTmp, 1, MPI_INT, MPI_ANY_SOURCE, JOB_TAG,
+    int rc = MPI_Irecv(&jobTmp, 1, MPI_INT, MPI_ANY_SOURCE, JOB_REQUEST_TAG,
             MPI_COMM_WORLD, request); 
     assert(rc == MPI_SUCCESS);
 }
@@ -442,9 +442,11 @@ bool test_and_handle_bound_update(MPI_Request *request, int *minPathLen,
     assert(rc == MPI_SUCCESS);
 
     if (boundArrived) {
-        *minPathLen = MIN(*minPathLen, *newBound);
-        MPI_Ibcast(minPathLen, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-                &broadcastRequest);
+        if (*newBound < *minPathLen) {
+            *minPathLen = *newBound;
+            MPI_Ibcast(minPathLen, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
+                    &broadcastRequest);
+        }
     
     }
 
@@ -464,7 +466,7 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
     assert(rc == MPI_SUCCESS);
 
     if (jobRequestArrived) {
-        rc = MPI_Ssend(nextState, 1, stateTypeName, status.MPI_SOURCE, TAG,
+        rc = MPI_Ssend(nextState, 1, stateTypeName, status.MPI_SOURCE, JOB_TAG,
                 MPI_COMM_WORLD); 
         assert(rc == MPI_SUCCESS);
     }
@@ -478,14 +480,14 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int numTasks, rc;
+    int numTasks;
     int numEmptyStatesSent = 0;
-    MPI_Status status;
-    MPI_Request boundRequest, broadcastRequest, jobRequest;
+    MPI_Request boundRequest, jobRequest;
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
 
     /* keep the best len found and the best coresponding path */
-    int minPathLen = INF;
+    int *minPathLen = malloc(sizeof(int)); // set on heap beacause it is 
+    *minPathLen = INF;                     // asyncronusly sent
     //shortestPath - define as function input
     
     /* create the first prefix [0, 1, ..., prefixLen-1, NOT_SET, ... NOT_SET] */
@@ -517,51 +519,61 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
                 nextState = create_state(shortestPathUntilNow[PREFIX_LEN(citiesNum)-1],
                         citiesNum, shortestPathUntilNow, agencyMatrix);
             }
+
             increas_prefix(nextPrefix, PREFIX_LEN(citiesNum), citiesNum);
             needJob = false;
         }
 
         /* check if we got new requests, handle it and renew listening */
-        if (test_and_handle_bound_update(&boundRequest, &minPathLen,
+        if (test_and_handle_bound_update(&boundRequest, minPathLen,
                     &minPathLenTmp))
             listen_bound_update_async(&boundRequest, &minPathLenTmp);
+
         if (test_and_handle_job_request(&jobRequest, nextState, stateTypeName)) {
             listen_job_request_async(&jobRequest);
             needJob = true;
         }
 
         /* free memory */
-        free_state(nextState);
+        if (needJob)
+            free_state(nextState);
     }
 
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
+    printf("cpu %d : barrier PASSED\n", 0);
     
-    /* gather the result */
-    int *allShortestPaths =
-        allocate_empty_array_of_int(numTasks * citiesNum * sizeof(int));
-    MPI_Gather(NULL, citiesNum, MPI_INT, allShortestPaths, citiesNum, MPI_INT,
-            /*root=*/0, MPI_COMM_WORLD);
+    ///* gather the result */
+    //int *allShortestPaths =
+    //    allocate_empty_array_of_int(numTasks * citiesNum * sizeof(int));
+    //MPI_Gather(NULL, citiesNum, MPI_INT, allShortestPaths, citiesNum, MPI_INT,
+    //        /*root=*/0, MPI_COMM_WORLD);
 
-    /* all the tasks have the same minPathLen so all shortestPaths should have
-     * the same len.
-     * tasks that didn't find a path with the require minPathLen have returne
-     * [NOT_SET, ..., NOT_SET] to the root task.
-     * we will look for the first non-empy shortestPath received */
-    int *start = allShortestPaths;
-    int *end = allShortestPaths + numTasks * citiesNum * sizeof(int);
-    for (int *it = start ; it<end ; it += citiesNum) {
-        if (it[0] != NOT_SET) {
-            copy_array_of_int(it, shortestPath, citiesNum);
-        }
-    }
-    assert(get_path_len(shortestPath, citiesNum, agencyMatrix) == minPathLen);
+    ///* all the tasks have the same minPathLen so all shortestPaths should have
+    // * the same len.
+    // * tasks that didn't find a path with the require minPathLen have returne
+    // * [NOT_SET, ..., NOT_SET] to the root task.
+    // * we will look for the first non-empy shortestPath received */
+    //int *start = allShortestPaths;
+    //int *end = allShortestPaths + numTasks * citiesNum * sizeof(int);
+    //printf("cpu %d : gather\n", 0);
+    //for (int *it = start ; it<end ; it += citiesNum) {
+    //    if (it[0] != NOT_SET) {
+    //        copy_array_of_int(it, shortestPath, citiesNum);
+    //        print_array_of_int(it, citiesNum);
+    //        printf("\n");
+    //        //FIXME: remove comment on break
+    //        //break;
+
+    //    }
+    //}
+    //assert(get_path_len(shortestPath, citiesNum, agencyMatrix) == *minPathLen);
 
     /* free the memory allocated */
-    free_array_of_int(allShortestPaths);
+    //free_array_of_int(allShortestPaths);
     free_array_of_int(nextPrefix);
     
-    return minPathLen;
+    return *minPathLen;
 }
 
 /* receive the data from the root task, compute a sub problem and return the
@@ -569,7 +581,7 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int rank, rc;
+    int rank;
     MPI_Status status;
     MPI_Request broadcastRequest, boundRequest;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -578,27 +590,26 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
     State *state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
 
-    /* compute the temporary result */
-    int minPathLenLocal = INF;
+    int *minPathLenLocal = malloc(sizeof(int)); // set on heap because it is 
+    *minPathLenLocal = INF;                     // asyncronusly sent
+    int minPathLenTmp, newBound;
     int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-
-    int minPathLenTmp;
-    int newBound;
     int *shortestPathTmp = allocate_empty_array_of_int(citiesNum);
 
     /* listen to bound update */
-    MPI_Ibcast(&minPathLenTmp, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
+    MPI_Ibcast(&newBound, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
             &broadcastRequest);
 
+    /* start main worker routine */
     bool finished = false;
     do {
         
         /* send a job request */
         int jobTmp;
-        MPI_Ssend(&jobTmp, 1, MPI_INT, /*dst=*/0, JOB_TAG, MPI_COMM_WORLD);
+        MPI_Ssend(&jobTmp, 1, MPI_INT, /*dst=*/0, JOB_REQUEST_TAG, MPI_COMM_WORLD);
 
         /* receive a new job */
-        MPI_Recv(state, 1, stateTypeName, /*src=*/0, TAG, MPI_COMM_WORLD,
+        MPI_Recv(state, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
                 &status);
 
         /* if the new state is a terminate-state (an empty state) then finish */
@@ -613,10 +624,14 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int rc = MPI_Test(&boundRequest, &boundArrived, &status);
         assert(rc == MPI_SUCCESS);
         if (boundArrived) {
-            if (newBound < minPathLenLocal) {
-                minPathLenLocal = newBound;
+            //printf("cpu %d : new bound %d has arrived from root\n", rank, newBound);
+            if (newBound < *minPathLenLocal) {
+                *minPathLenLocal = newBound;
+                //printf("cpu %d : new bound was localy updated to %d\n", rank, newBound);
                 free_array_of_int(shortestPathLocal);
                 shortestPathLocal = allocate_empty_array_of_int(citiesNum);
+                //printf("cpu %d : shortestPathLocal was erased due to a new bound %d\n",
+                //        rank, newBound);
             }
             /* renew listening to bound update */
             MPI_Ibcast(&minPathLenTmp, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
@@ -625,20 +640,25 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 
         if (state->vertex != NOT_SET) {
             /* if we found a better result than the curren one - notify the root */
-            if (minPathLenTmp < minPathLenLocal) {
-                minPathLenLocal = minPathLenTmp;
+            if (minPathLenTmp < *minPathLenLocal) {
+                *minPathLenLocal = minPathLenTmp;
                 copy_array_of_int(shortestPathTmp, shortestPathLocal, citiesNum);
+                MPI_Issend(minPathLenLocal, 1, MPI_INT, /*dst=*/0,
+                        BOUND_TAG, MPI_COMM_WORLD, &boundRequest);
+                printf("cpu %d send newBound = %d to root\n", rank, *minPathLenLocal);
             }
         }
 
     } while ( !finished );
 
-    /* send the result to root task */
-    MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
-            0, MPI_COMM_WORLD);
+    ///* send the result to root task */
+    //MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
+    //        0, MPI_COMM_WORLD);
+    //printf("cpu %d : sent shortestPathLocal to root\n", rank);
 
     /* wait for all tasks to terminate the computatioin */
     MPI_Barrier(MPI_COMM_WORLD);
+    printf("cpu %d : barrier PASSED\n", rank);
 
     /* free memory */
     free_state(state);
