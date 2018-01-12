@@ -93,10 +93,38 @@ void increas_prefix_rec(int *oldPrefix, int *newPrefix, int prefixLen,
 }
 
 /* increase the prefix by 1.
- * ASSERT that prefix[0] == 0 */
+ * NOTES:
+ * - if the  given prefix is the last one (starting with 0) then the prefix is
+ *   updated to [NOT_SET, NOT_SET, ..., NOT_SET]
+ * - if the  given prefix is [NOT_SET, NOT_SET, ..., NOT_SET] then the prefix
+ *   remain untached.
+ * ASSERT that prefix[0] == (0 || NOT_SET) */
 void increas_prefix(int *prefix, int prefixLen, int citiesNum) {
    
-    assert(prefix[0] == 0);
+    assert(prefix[0] == 0 || prefix[0] == NOT_SET);
+
+    /* check if prefix is an empty prefix */
+    int *tmpPrefix = allocate_empty_array_of_int(citiesNum);
+    bool isEmpty = are_equal_array_of_int(tmpPrefix, prefix, citiesNum);
+    if (isEmpty) {
+        free_array_of_int(tmpPrefix);
+        return;
+    }
+
+    /* check if prefix is the last prefix */
+    tmpPrefix[0] = 0;
+    for (int i=1 ; i<prefixLen ; i++) {
+        tmpPrefix[i] = citiesNum - i;
+    }
+    bool isLast = are_equal_array_of_int(tmpPrefix, prefix, citiesNum);
+    if (isLast) {
+        free_array_of_int(tmpPrefix);
+        free_array_of_int(prefix);
+        prefix = allocate_empty_array_of_int(citiesNum);
+        return;
+    }
+
+    /* if the prefix is a non-empty non-last prefix, is been increased */
     bool foundCurrPrefix = false, foundNextPrefix = false;
     int *newPrefix = allocate_empty_array_of_int(prefixLen);
 
@@ -777,17 +805,21 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //
 //    /* increas_prefix test */
 //    int prefixLen = 4;
+//    int citiesNum = 4;
+//
 //    int *prefix = allocate_empty_array_of_int(prefixLen);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    int tmp[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
+//    assert(are_equal_array_of_int(prefix, tmp, citiesNum));
+//
 //    for(int i=0 ; i<prefixLen ; i++) {
 //        prefix[i] = i;
 //    }
-//
 //    assert(prefix[0] == 0);
 //    assert(prefix[1] == 1);
 //    assert(prefix[2] == 2);
 //    assert(prefix[3] == 3);
 //
-//    int citiesNum = 4;
 //    increas_prefix(prefix, prefixLen, citiesNum);
 //    assert(prefix[0] == 0);
 //    assert(prefix[1] == 1);
@@ -813,6 +845,11 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //    assert(prefix[1] == 3);
 //    assert(prefix[2] == 2);
 //    assert(prefix[3] == 1);
+//    increas_prefix(prefix, prefixLen, citiesNum);
+//    assert(prefix[0] == NOT_SET);
+//    assert(prefix[1] == NOT_SET);
+//    assert(prefix[2] == NOT_SET);
+//    assert(prefix[3] == NOT_SET);
 //
 //    prefix[0] = 0;
 //    prefix[1] = 1;
@@ -892,9 +929,10 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //
 //
 //
+//    ////FIXME: do i need this?
 //    ///* init_array_of_states test */
 //    //int numTasks = 8;
-//    //citiesNum = 6;
+//    //int citiesNum = 6;
 //    //int xCoord[] = {0, 1, 2, 3, 4, 5};
 //    //int yCoord[] = {0, 0, 0, 0, 0, 0};
 //    //int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
@@ -1010,63 +1048,64 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 //
 //
 //
-//    /* init_array_of_prefixes test */
-//    int numTasks = 8;
-//    prefixLen = 4;
-//    citiesNum = 6;
-//    int xCoord[] = {0, 1, 2, 3, 4, 5};
-//    int yCoord[] = {0, 0, 0, 0, 0, 0};
-//    int *prefixesArr = allocate_array_of_prefixes(numTasks, citiesNum);
+//    //FIXME: do i need it ?
+//    ///* init_array_of_prefixes test */
+//    //int numTasks = 8;
+//    //prefixLen = 4;
+//    //citiesNum = 6;
+//    //int xCoord[] = {0, 1, 2, 3, 4, 5};
+//    //int yCoord[] = {0, 0, 0, 0, 0, 0};
+//    //int *prefixesArr = allocate_array_of_prefixes(numTasks, citiesNum);
 //
-//    int *nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
-//            prefixLen);
-//    int requestedNextPrefix0[] = {0, 1, 4, 3};
-//    assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix0, prefixLen));
-//    free_array_of_int(nextPrefix);
+//    //int *nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
+//    //        prefixLen);
+//    //int requestedNextPrefix0[] = {0, 1, 4, 3};
+//    //assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix0, prefixLen));
+//    //free_array_of_int(nextPrefix);
 //
-//    int rs0[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
-//    assert(are_equal_array_of_int(prefixesArr, rs0, prefixLen));
+//    //int rs0[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
+//    //assert(are_equal_array_of_int(prefixesArr, rs0, prefixLen));
 //
-//    int rs1[] = {0, 1, 2, 3};
-//    assert(are_equal_array_of_int(prefixesArr + prefixLen, rs1, prefixLen));
+//    //int rs1[] = {0, 1, 2, 3};
+//    //assert(are_equal_array_of_int(prefixesArr + prefixLen, rs1, prefixLen));
 //
-//    int rs2[] = {0, 1, 2, 4};
-//    assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs2, prefixLen));
+//    //int rs2[] = {0, 1, 2, 4};
+//    //assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs2, prefixLen));
 //
-//    int rs7[] = {0, 1, 4, 2};
-//    assert(are_equal_array_of_int(prefixesArr + 7*prefixLen, rs7, prefixLen));
+//    //int rs7[] = {0, 1, 4, 2};
+//    //assert(are_equal_array_of_int(prefixesArr + 7*prefixLen, rs7, prefixLen));
 //
 //
-//    citiesNum = 4;
-//    numTasks = 7;
-//    nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
-//            prefixLen);
-//    int requestedNextPrefix1[] = {1, 0, 2, 3};
-//    assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix1, prefixLen));
-//    free_array_of_int(nextPrefix);
+//    //citiesNum = 4;
+//    //numTasks = 7;
+//    //nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
+//    //        prefixLen);
+//    //int requestedNextPrefix1[] = {1, 0, 2, 3};
+//    //assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix1, prefixLen));
+//    //free_array_of_int(nextPrefix);
 //
-//    int rs00[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
-//    assert(are_equal_array_of_int(prefixesArr, rs00, prefixLen));
+//    //int rs00[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
+//    //assert(are_equal_array_of_int(prefixesArr, rs00, prefixLen));
 //
-//    int rs01[] = {0, 1, 2, 3};
-//    assert(are_equal_array_of_int(prefixesArr + prefixLen, rs01, prefixLen));
+//    //int rs01[] = {0, 1, 2, 3};
+//    //assert(are_equal_array_of_int(prefixesArr + prefixLen, rs01, prefixLen));
 //
-//    int rs02[] = {0, 1, 3, 2};
-//    assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs02, prefixLen));
+//    //int rs02[] = {0, 1, 3, 2};
+//    //assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs02, prefixLen));
 //
-//    int rs03[] = {0, 2, 1, 3};
-//    assert(are_equal_array_of_int(prefixesArr + 3*prefixLen, rs03, prefixLen));
+//    //int rs03[] = {0, 2, 1, 3};
+//    //assert(are_equal_array_of_int(prefixesArr + 3*prefixLen, rs03, prefixLen));
 //
-//    int rs04[] = {0, 2, 3, 1};
-//    assert(are_equal_array_of_int(prefixesArr + 4*prefixLen, rs04, prefixLen));
+//    //int rs04[] = {0, 2, 3, 1};
+//    //assert(are_equal_array_of_int(prefixesArr + 4*prefixLen, rs04, prefixLen));
 //
-//    int rs05[] = {0, 3, 1, 2};
-//    assert(are_equal_array_of_int(prefixesArr + 5*prefixLen, rs05, prefixLen));
+//    //int rs05[] = {0, 3, 1, 2};
+//    //assert(are_equal_array_of_int(prefixesArr + 5*prefixLen, rs05, prefixLen));
 //
-//    int rs06[] = {0, 3, 2, 1};
-//    assert(are_equal_array_of_int(prefixesArr + 6*prefixLen, rs06, prefixLen));
+//    //int rs06[] = {0, 3, 2, 1};
+//    //assert(are_equal_array_of_int(prefixesArr + 6*prefixLen, rs06, prefixLen));
 //
-//    free_array_of_prefixes(prefixesArr);
+//    //free_array_of_prefixes(prefixesArr);
 //}
 
 
