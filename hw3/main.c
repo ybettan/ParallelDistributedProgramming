@@ -16,6 +16,9 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[]);
 int main(int argc, char** argv)  
 {
 	// example input, with 18 cities. set citiesNum to less for an easier start.
+	//int citiesNum = 5;
+	//int xCoord[] = {1, 3, 5, 9, 2};   
+	//int yCoord[] = {1, 3, 5, 7, 9};   
 	//int citiesNum = 6;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11};   
@@ -31,15 +34,18 @@ int main(int argc, char** argv)
 	//int citiesNum = 10;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20};   
-	int citiesNum = 12;
-	int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1};   
-	int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24};   
+	//int citiesNum = 11;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22};   
+	//int citiesNum = 12;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24};   
 	//int citiesNum = 13;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26};   
-	//int citiesNum = 14;
-	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1};   
-	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27};   
+	int citiesNum = 14;
+	int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1};   
+	int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27};   
 	//int citiesNum = 15;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27, 29};   

@@ -486,23 +486,7 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
 
     return jobRequestArrived;
 }
-//bool test_and_handle_job_request(MPI_Request *request, State *nextState,
-//        MPI_Datatype stateTypeName) { 
-//
-//    MPI_Status status;
-//    int jobRequestArrived = false;
-//
-//    int rc = MPI_Test(request, &jobRequestArrived, &status);
-//    assert(rc == MPI_SUCCESS);
-//
-//    if (jobRequestArrived) {
-//        rc = MPI_Ssend(nextState, 1, stateTypeName, status.MPI_SOURCE, JOB_TAG,
-//                MPI_COMM_WORLD); 
-//        assert(rc == MPI_SUCCESS);
-//    }
-//
-//    return jobRequestArrived;
-//}
+
 
 /* the root task send all the data to other tasks, wait to all the data to be
  * received on other task, compute a sub problem itself, gather the results
@@ -541,7 +525,7 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     double testAndHandleJobSum = 0;
     int testAndHandleJobCounter = 0;
 	clock_t begin_c, end_c;
-    
+
     /* start the main routine */
     bool needJob = true;
     State *nextState;
@@ -580,16 +564,6 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         /* check if we got new requests, handle it and renew listening */
         begin_c = clock();
 
-        if (test_and_handle_bound_update(&boundRequest, minPathLen,
-                    &minPathLenTmp))
-            listen_bound_update_async(&boundRequest, &minPathLenTmp);
-
-        end_c = clock();
-        testAndHandleBoundSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        testAndHandleBoundCounter++;
-
-        begin_c = clock();
-
         if (test_and_handle_job_request(&jobRequest, nextState, stateTypeName)) {
             listen_job_request_async(&jobRequest);
             needJob = true;
@@ -598,6 +572,16 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         end_c = clock();
         testAndHandleJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
         testAndHandleJobCounter++;
+
+        begin_c = clock();
+
+        if (test_and_handle_bound_update(&boundRequest, minPathLen,
+                    &minPathLenTmp))
+            listen_bound_update_async(&boundRequest, &minPathLenTmp);
+
+        end_c = clock();
+        testAndHandleBoundSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+        testAndHandleBoundCounter++;
 
         /* free memory */
         if (needJob)
@@ -611,6 +595,10 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
             testAndHandleBoundSum/testAndHandleBoundCounter);
     printf("root timing : avg test and handle job = %f\n",
             testAndHandleJobSum/testAndHandleJobCounter);
+    printf("root timing : TOTAL create state = %f\n", createStateSum);
+    printf("root timing : TOTAL increase prefix = %f\n", increasePrefixSum);
+    printf("root timing : TOTAL test and handle bounds = %f\n", testAndHandleBoundSum);
+    printf("root timing : TOTAL test and handle job = %f\n", testAndHandleJobSum);
         
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
@@ -653,6 +641,16 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
+    //FIXME: remove
+    double cpuMainSum = 0;
+    int cpuMainCounter = 0;
+    double testAndHandleBoundReceiveSum = 0;
+    int testAndHandleBoundCounter = 0;
+    clock_t begin_c, end_c;
+    double waitingJobSum = 0;
+    int waitingJobCounter = 0;
+
+
     int rank;
     MPI_Status status;
     MPI_Request broadcastRequest, boundRequest;
@@ -683,9 +681,6 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     MPI_Recv(state, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
             &status);
 
-    //FIXME: remove
-    double waitingJobSum = 0;
-    int waitingJobCounter = 0;
 
     /* start main worker routine */
     bool finished = false;
@@ -699,6 +694,8 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         MPI_Irecv(nextState, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
                 &receiveNextJobRequest);
 
+        begin_c = clock();
+
         /* run cpu_main on state */
         if (state->vertex != NOT_SET) {
             minPathLenTmp = INF;
@@ -706,6 +703,12 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
                     shortestPathTmp);
         } else
             finished = true;
+
+        end_c = clock();
+		cpuMainSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+        cpuMainCounter++;
+
+        begin_c = clock();
 
         /* test new bound */
         int boundArrived = false;
@@ -722,6 +725,10 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
                     &broadcastRequest);
         }
 
+        end_c = clock();
+		testAndHandleBoundReceiveSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+        testAndHandleBoundCounter++;
+
         /* check the result */
         if (state->vertex != NOT_SET) {
             /* if we found a better result than the curren one - notify the root */
@@ -734,7 +741,7 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         }
 
         //FIXME: remove
-	    clock_t begin = clock();
+	    begin_c = clock();
 
         /* wait for new state */
         MPI_Wait(&sendNextJobRequest, &status);
@@ -744,8 +751,8 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         nextState = tmp;
 
         //FIXME: remove
-	    clock_t end = clock();
-		waitingJobSum += (double)(end - begin) / CLOCKS_PER_SEC;
+	    end_c = clock();
+		waitingJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
         waitingJobCounter++;
 
         if (state->vertex == NOT_SET)
@@ -753,7 +760,15 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 
     } while ( !finished );
 
-    //printf("cpu %d : avg waiting for job time = %f\n", rank, waitingJobSum/waitingJobCounter);
+    printf("cpu %d : avg cpu_main time = %f\n", rank, cpuMainSum/cpuMainCounter);
+    printf("cpu %d : avg testAndHandleBoundReceive time = %f\n",
+            rank, testAndHandleBoundReceiveSum/testAndHandleBoundCounter);
+    printf("cpu %d : avg waiting for job time = %f\n", rank, waitingJobSum/waitingJobCounter);
+    printf("cpu %d : TOTAL cpu_main time = %f\n", rank, cpuMainSum);
+    printf("cpu %d : TOTAL testAndHandleBoundReceive time = %f\n",
+            rank, testAndHandleBoundReceiveSum);
+    printf("cpu %d : TOTAL waiting for job time = %f\n", rank, waitingJobSum);
+
 
     /* send the result to root task */
     MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
@@ -769,96 +784,6 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     free_array_of_int(shortestPathLocal);
     free_array_of_int(shortestPathTmp);
 }
-///* receive the data from the root task, compute a sub problem and return the
-// * best local result to root task */
-//void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
-//        int *shortestPath) {
-//
-//    int rank;
-//    MPI_Status status;
-//    MPI_Request broadcastRequest, boundRequest;
-//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//
-//    /* allocate a state to receive data */
-//    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-//    State *state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-//
-//    int *minPathLenLocal = malloc(sizeof(int)); // set on heap because it is 
-//    *minPathLenLocal = INF;                     // asyncronusly sent
-//    int minPathLenTmp, newBound;
-//    int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-//    int *shortestPathTmp = allocate_empty_array_of_int(citiesNum);
-//
-//    /* listen to bound update */
-//    MPI_Ibcast(&newBound, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-//            &broadcastRequest);
-//
-//    /* start main worker routine */
-//    bool finished = false;
-//    do {
-//        
-//        //printf("other\n");
-//        /* send a job request */
-//        int jobTmp;
-//        MPI_Request t;
-//        MPI_Ssend(&jobTmp, 1, MPI_INT, /*dst=*/0, JOB_REQUEST_TAG, MPI_COMM_WORLD);
-//
-//        /* receive a new job */
-//        MPI_Recv(state, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
-//                &status);
-//        printf("cpu %d : got job --> ", rank);
-//        print_array_of_int(state->shortestPathUntilNow, PREFIX_LEN(citiesNum));
-//        printf("\n");
-//
-//        /* if the new state is a terminate-state (an empty state) then finish */
-//        if (state->vertex != NOT_SET) {
-//            minPathLenTmp = INF;
-//            cpu_main(state, citiesNum, agencyMatrix, &minPathLenTmp,
-//                    shortestPathTmp);
-//        } else
-//            finished = true;
-//
-//        /* test new bound */
-//        int boundArrived = false;
-//        int rc = MPI_Test(&broadcastRequest, &boundArrived, &status);
-//        assert(rc == MPI_SUCCESS);
-//        if (boundArrived) {
-//            if (newBound < *minPathLenLocal) {
-//                *minPathLenLocal = newBound;
-//                free_array_of_int(shortestPathLocal);
-//                shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-//            }
-//            /* renew listening to bound update */
-//            MPI_Ibcast(&newBound, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-//                    &broadcastRequest);
-//        }
-//
-//        if (state->vertex != NOT_SET) {
-//            /* if we found a better result than the curren one - notify the root */
-//            if (minPathLenTmp < *minPathLenLocal) {
-//                *minPathLenLocal = minPathLenTmp;
-//                copy_array_of_int(shortestPathTmp, shortestPathLocal, citiesNum);
-//                MPI_Issend(minPathLenLocal, 1, MPI_INT, /*dst=*/0,
-//                        BOUND_TAG, MPI_COMM_WORLD, &boundRequest);
-//            }
-//        }
-//
-//    } while ( !finished );
-//
-//    /* send the result to root task */
-//    MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
-//            /*root=*/0, MPI_COMM_WORLD);
-//
-//    /* wait for all tasks to terminate the computatioin */
-//    MPI_Barrier(MPI_COMM_WORLD);
-//
-//    /* free memory */
-//    free_state(state);
-//    free_array_of_int(shortestPathLocal);
-//    free_array_of_int(shortestPathTmp);
-//}
-
-
 
 // The dynamic parellel algorithm main function.
 int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
