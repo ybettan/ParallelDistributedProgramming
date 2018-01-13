@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <time.h>
 
 
 #define INF 3000000
@@ -17,10 +18,15 @@
 //#define PREFIX_LEN(citiesNum)   ((citiesNum)-5)
 //#define PREFIX_LEN(citiesNum)   ((citiesNum)-10)
 //#define PREFIX_LEN(citiesNum)   ((citiesNum)-3)
-#define PREFIX_LEN(citiesNum)   3
-//#define PREFIX_LEN(citiesNum)   4
+//#define PREFIX_LEN(citiesNum)   2
+//#define PREFIX_LEN(citiesNum)   3
+#define PREFIX_LEN(citiesNum)   4
+//#define PREFIX_LEN(citiesNum)   5
+//#define PREFIX_LEN(citiesNum)   6
 #define MIN(a, b)   (((a) < (b)) ? (a) : (b))
 
+
+int *lightestEdge;
 
 
 //-----------------------------------------------------------------------------
@@ -297,14 +303,15 @@ int heuristic(State *state, int citiesNum, int **agencyMatrix) {
             i != state->shortestPathUntilNow[0])
             continue;
 
-        /* find the lightest edge of vertex i */
-        int lightestEdge = INF;
-        for (int j=0 ; j<citiesNum ; j++) {
-            if (agencyMatrix[i][j] < lightestEdge) {
-                lightestEdge = agencyMatrix[i][j];
-            }
-        }
-        res += lightestEdge;
+        ///* find the lightest edge of vertex i */
+        //int lightestEdge = INF;
+        //for (int j=0 ; j<citiesNum ; j++) {
+        //    if (agencyMatrix[i][j] < lightestEdge) {
+        //        lightestEdge = agencyMatrix[i][j];
+        //    }
+        //}
+        //res += lightestEdge;
+        res += lightestEdge[i];
     }
     return res;
 }
@@ -479,6 +486,23 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
 
     return jobRequestArrived;
 }
+//bool test_and_handle_job_request(MPI_Request *request, State *nextState,
+//        MPI_Datatype stateTypeName) { 
+//
+//    MPI_Status status;
+//    int jobRequestArrived = false;
+//
+//    int rc = MPI_Test(request, &jobRequestArrived, &status);
+//    assert(rc == MPI_SUCCESS);
+//
+//    if (jobRequestArrived) {
+//        rc = MPI_Ssend(nextState, 1, stateTypeName, status.MPI_SOURCE, JOB_TAG,
+//                MPI_COMM_WORLD); 
+//        assert(rc == MPI_SUCCESS);
+//    }
+//
+//    return jobRequestArrived;
+//}
 
 /* the root task send all the data to other tasks, wait to all the data to be
  * received on other task, compute a sub problem itself, gather the results
@@ -506,15 +530,27 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     int minPathLenTmp;
     listen_bound_update_async(&boundRequest, &minPathLenTmp);
     listen_job_request_async(&jobRequest);
+
+    //FIXME: remove
+    double createStateSum = 0;
+    int createStateCounter = 0;
+    double increasePrefixSum = 0;
+    int increasePrefixCounter = 0;
+    double testAndHandleBoundSum = 0;
+    int testAndHandleBoundCounter = 0;
+    double testAndHandleJobSum = 0;
+    int testAndHandleJobCounter = 0;
+	clock_t begin_c, end_c;
     
     /* start the main routine */
     bool needJob = true;
     State *nextState;
     while ( numEmptyStatesSent < numTasks-1 ) {
 
-
         /* create the next state - may be an empty state if we finished */
         if (needJob) {
+
+            begin_c = clock();
 
             int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
             copy_array_of_int(nextPrefix, shortestPathUntilNow, citiesNum);
@@ -527,64 +563,89 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
                         citiesNum, shortestPathUntilNow, agencyMatrix);
             }
 
-            printf("cpu %d : created ", 0);
-            print_array_of_int(nextState->shortestPathUntilNow, citiesNum);
-            printf("\n");
+            end_c = clock();
+            createStateSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+            createStateCounter++;
+
+            begin_c = clock();
 
             increas_prefix(nextPrefix, PREFIX_LEN(citiesNum), citiesNum);
             needJob = false;
+
+            end_c = clock();
+            increasePrefixSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+            increasePrefixCounter++;
         }
 
         /* check if we got new requests, handle it and renew listening */
+        begin_c = clock();
+
         if (test_and_handle_bound_update(&boundRequest, minPathLen,
                     &minPathLenTmp))
             listen_bound_update_async(&boundRequest, &minPathLenTmp);
+
+        end_c = clock();
+        testAndHandleBoundSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+        testAndHandleBoundCounter++;
+
+        begin_c = clock();
 
         if (test_and_handle_job_request(&jobRequest, nextState, stateTypeName)) {
             listen_job_request_async(&jobRequest);
             needJob = true;
         }
 
+        end_c = clock();
+        testAndHandleJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
+        testAndHandleJobCounter++;
+
         /* free memory */
         if (needJob)
             free_state(nextState);
+
     }
 
+    printf("root timing : avg create state = %f\n", createStateSum/createStateCounter);
+    printf("root timing : avg increase prefix = %f\n", increasePrefixSum/increasePrefixCounter);
+    printf("root timing : avg test and handle bounds = %f\n",
+            testAndHandleBoundSum/testAndHandleBoundCounter);
+    printf("root timing : avg test and handle job = %f\n",
+            testAndHandleJobSum/testAndHandleJobCounter);
+        
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
     
-    ///* gather the result */
-    //int *tmpShortestPath = allocate_empty_array_of_int(citiesNum);
-    //int *allShortestPaths =
-    //    allocate_empty_array_of_int(numTasks * citiesNum * sizeof(int));
-    //MPI_Gather(tmpShortestPath, citiesNum, MPI_INT, allShortestPaths, citiesNum,
-    //        MPI_INT, /*root=*/0, MPI_COMM_WORLD);
+    /* gather the result */
+    int *tmpShortestPath = allocate_empty_array_of_int(citiesNum);
+    int *allShortestPaths =
+        allocate_empty_array_of_int(numTasks * citiesNum * sizeof(int));
+    MPI_Gather(tmpShortestPath, citiesNum, MPI_INT, allShortestPaths, citiesNum,
+            MPI_INT, /*root=*/0, MPI_COMM_WORLD);
 
-    ///* all the tasks have the same minPathLen so all shortestPaths should have
-    // * the same len.
-    // * tasks that didn't find a path with the require minPathLen have returne
-    // * [NOT_SET, ..., NOT_SET] to the root task.
-    // * we will look for the first non-empy shortestPath received */
-    //int *start = allShortestPaths;
-    //int *end = allShortestPaths + numTasks * citiesNum * sizeof(int);
-    //for (int *it = start ; it<end ; it += citiesNum) {
-    //    if (it[0] != NOT_SET) {
-    //        copy_array_of_int(it, shortestPath, citiesNum);
-    //        break;
+    /* all the tasks have the same minPathLen so all shortestPaths should have
+     * the same len.
+     * tasks that didn't find a path with the require minPathLen have returne
+     * [NOT_SET, ..., NOT_SET] to the root task.
+     * we will look for the first non-empy shortestPath received */
+    int *start = allShortestPaths;
+    int *end = allShortestPaths + numTasks * citiesNum * sizeof(int);
+    for (int *it = start ; it<end ; it += citiesNum) {
+        if (it[0] != NOT_SET) {
+            copy_array_of_int(it, shortestPath, citiesNum);
+            break;
 
-    //    }
-    //}
-    //assert(get_path_len(shortestPath, citiesNum, agencyMatrix) == *minPathLen);
+        }
+    }
+    assert(get_path_len(shortestPath, citiesNum, agencyMatrix) == *minPathLen);
 
     /* free the memory allocated */
-    //int tmp = *minPathLen;
-    //free(minPathLen);
-    //free_array_of_int(allShortestPaths);
-    //free_array_of_int(tmpShortestPath);
-    //free_array_of_int(nextPrefix);
+    int tmp = *minPathLen;
+    free(minPathLen);
+    free_array_of_int(allShortestPaths);
+    free_array_of_int(tmpShortestPath);
+    free_array_of_int(nextPrefix);
     
-    //return tmp;
-    return 0;
+    return tmp;
 }
 
 /* receive the data from the root task, compute a sub problem and return the
@@ -622,9 +683,9 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     MPI_Recv(state, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
             &status);
 
-    printf("cpu %d : got job --> ", rank);
-    print_array_of_int(state->shortestPathUntilNow, citiesNum);
-    printf("\n");
+    //FIXME: remove
+    double waitingJobSum = 0;
+    int waitingJobCounter = 0;
 
     /* start main worker routine */
     bool finished = false;
@@ -672,6 +733,9 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
             }
         }
 
+        //FIXME: remove
+	    clock_t begin = clock();
+
         /* wait for new state */
         MPI_Wait(&sendNextJobRequest, &status);
         MPI_Wait(&receiveNextJobRequest, &status);
@@ -679,28 +743,31 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         state = nextState;
         nextState = tmp;
 
+        //FIXME: remove
+	    clock_t end = clock();
+		waitingJobSum += (double)(end - begin) / CLOCKS_PER_SEC;
+        waitingJobCounter++;
+
         if (state->vertex == NOT_SET)
             finished = true;
 
-        printf("cpu %d : got job --> ", rank);
-        print_array_of_int(state->shortestPathUntilNow, citiesNum);
-        printf("\n");
-
     } while ( !finished );
 
+    //printf("cpu %d : avg waiting for job time = %f\n", rank, waitingJobSum/waitingJobCounter);
+
     /* send the result to root task */
-    //MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
-    //        /*root=*/0, MPI_COMM_WORLD);
+    MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
+            /*root=*/0, MPI_COMM_WORLD);
 
     /* wait for all tasks to terminate the computatioin */
     MPI_Barrier(MPI_COMM_WORLD);
 
     /* free memory */
-    //free(minPathLenLocal);
-    //free_state(state);
-    //free_state(nextState);
-    //free_array_of_int(shortestPathLocal);
-    //free_array_of_int(shortestPathTmp);
+    free(minPathLenLocal);
+    free_state(state);
+    free_state(nextState);
+    free_array_of_int(shortestPathLocal);
+    free_array_of_int(shortestPathTmp);
 }
 ///* receive the data from the root task, compute a sub problem and return the
 // * best local result to root task */
@@ -809,6 +876,17 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
     /* create agencyMatrix */
     int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
 
+    /* create lightestEdge array */
+    lightestEdge = malloc(citiesNum * sizeof(int));
+    assert(lightestEdge);
+    for (int i=0 ; i<citiesNum ; i++) {
+        int min = INF;
+        for (int k=0 ; k<citiesNum ; k++) {
+            min = MIN(min, agencyMatrix[i][k]);
+        }
+        lightestEdge[i] = min;
+    }
+
     /* create rootState for registering State struct to mpi library */
     int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
     shortestPathUntilNow[0] = 0;
@@ -827,6 +905,7 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
     }
 
     /* free memory allocated */
+    free(lightestEdge);
     free_state(rootState);
     free_agency_matrix(agencyMatrix, citiesNum);
     MPI_Type_free(&stateTypeName);

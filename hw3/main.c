@@ -31,15 +31,21 @@ int main(int argc, char** argv)
 	//int citiesNum = 10;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20};   
-	//int citiesNum = 12;
-	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1};   
-	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24};   
-	int citiesNum = 13;
-	int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1};   
-	int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26};   
+	int citiesNum = 12;
+	int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1};   
+	int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24};   
+	//int citiesNum = 13;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26};   
 	//int citiesNum = 14;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27};   
+	//int citiesNum = 15;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27, 29};   
+	//int citiesNum = 16;
+	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1};   
+	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27, 29, 30};   
 	//int citiesNum = 17;
 	//int xCoord[] = {1, 3, 5, 9, 2,  3,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1};   
 	//int yCoord[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 24, 26, 27, 29, 30, 31};   
@@ -59,16 +65,16 @@ int main(int argc, char** argv)
 
 	if (myRank == 0)
 	{
-	//	printf("The shortest path, %d long, is:\n", minPathLen);  
-	//	for (i = 0; i < citiesNum; i++)
-	//	{
-	//		// print the city (and its distance from the next city in the path)
-	//		printf("%d (%d) ", shortestPath[i],
-	//				1 +
-	//				2*abs(xCoord[shortestPath[i]] - xCoord[shortestPath[(i + 1) % citiesNum]]) + 
-	//				2*abs(yCoord[shortestPath[i]] - yCoord[shortestPath[(i + 1) % citiesNum]]) );
-	//	}
-	//	printf("%d\n", shortestPath[0]);
+		printf("The shortest path, %d long, is:\n", minPathLen);  
+		for (i = 0; i < citiesNum; i++)
+		{
+			// print the city (and its distance from the next city in the path)
+			printf("%d (%d) ", shortestPath[i],
+					1 +
+					2*abs(xCoord[shortestPath[i]] - xCoord[shortestPath[(i + 1) % citiesNum]]) + 
+					2*abs(yCoord[shortestPath[i]] - yCoord[shortestPath[(i + 1) % citiesNum]]) );
+		}
+		printf("%d\n", shortestPath[0]);
 		printf("Execution time: %g seconds\n", (double)(end - begin) / CLOCKS_PER_SEC);
 	}
 
