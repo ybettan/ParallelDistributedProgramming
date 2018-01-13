@@ -698,743 +698,743 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 }
 
 
-//-----------------------------------------------------------------------------
-//                                  tests
-//                              FIXME:remove
-//-----------------------------------------------------------------------------
-
-int main() {
-
-
-
-    /* allocate_empty_array_of_int, copy_array_of_int, is_in and 
-     * free_array_of_int test */
-    int size = 5;
-    int *arr100 = allocate_empty_array_of_int(size);
-    int *arr101 = allocate_empty_array_of_int(size);
-    for (int i=0 ; i<size ; i++) {
-        assert(arr100[i] == NOT_SET);
-        assert(arr101[i] == NOT_SET);
-    }
-
-    for (int i=0 ; i<size ; i++) {
-        arr100[i] = i;
-        arr101[i] = i;
-    }
-
-    int *arr102 = allocate_empty_array_of_int(size);
-    int *arr103 = allocate_empty_array_of_int(size);
-
-    assert( !is_in(3, arr102, size));
-    assert( !is_in(5, arr102, size));
-    assert( !is_in(0, arr103, size));
-
-    copy_array_of_int(arr100, arr102, size);
-    copy_array_of_int(arr101, arr103, size);
-
-    for (int i=0 ; i<size ; i++) {
-        assert(arr102[i] == i);
-        assert(arr103[i] == i);
-    }
-
-    assert( is_in(3, arr102, size));
-    assert( !is_in(5, arr102, size));
-    assert( is_in(0, arr103, size));
-
-    free_array_of_int(arr100);
-    free_array_of_int(arr101);
-    free_array_of_int(arr102);
-    free_array_of_int(arr103);
-
-
-
-
-
-
-
-
-
-
-    int xCoord[3] = {1, 1, 1};
-    int yCoord[3] = {1, 2, 4};
-    int citiesNum = 3;
-
-
-
-
-
-
-
-
-    /* create matrix test */
-    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    assert(agencyMatrix[0][0] == INF);
-    assert(agencyMatrix[0][1] == 3);
-    assert(agencyMatrix[0][2] == 7);
-    assert(agencyMatrix[1][0] == 3);
-    assert(agencyMatrix[1][1] == INF);
-    assert(agencyMatrix[1][2] == 5);
-    assert(agencyMatrix[2][0] == 7);
-    assert(agencyMatrix[2][1] == 5);
-    assert(agencyMatrix[2][2] == INF);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-
-
-
-
-
-
-    /* state test */
-    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 1;
-    /* {1, NOT_SET, NOT_SET} */
-    State *state = create_state(1, citiesNum, shortestPathUntilNow, agencyMatrix);
-    assert(state->vertex == 1);
-    assert(state->cost == 0);
-    assert(state->shortestPathUntilNow[0] == 1);
-    assert(state->shortestPathUntilNow[1] == NOT_SET);
-    assert(state->shortestPathUntilNow[2] == NOT_SET);
-    assert( !is_leaf(state, citiesNum) );
-    free_state(state);
-
-    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 1;
-    shortestPathUntilNow[1] = 2;
-    /* {1, 2, NOT_SET} */
-    state = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
-    assert(state->vertex == 2);
-    assert(state->cost == 5);
-    assert( !is_leaf(state, citiesNum) );
-    free_state(state);
-
-    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 1;
-    shortestPathUntilNow[1] = 2;
-    shortestPathUntilNow[2] = 0;
-    /* {1, 2, 0} */
-    state = create_state(0, citiesNum,shortestPathUntilNow, agencyMatrix);
-    assert( is_leaf(state, citiesNum) );
-    assert(state->vertex == 0);
-    assert(state->cost == 12);
-    free_state(state);
-
-    int *shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow2[0] = 1;
-    /* {1, NOT_SET, NOT_SET} */
-    State *state2 = create_state(1, citiesNum, shortestPathUntilNow2, agencyMatrix);
-    assert(!is_leaf(state2, citiesNum));
-    free_state(state2);
-
-    shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow2[0] = 1;
-    shortestPathUntilNow2[1] = 2;
-    /* {1, 2, NOT_SET} */
-    state2 = create_state(2, citiesNum, shortestPathUntilNow2, agencyMatrix);
-    assert(!is_leaf(state2, citiesNum));
-    free_state(state2);
-
-    shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow2[0] = 1;
-    shortestPathUntilNow2[1] = 2;
-    shortestPathUntilNow2[2] = 0;
-    /* {1, 2, 0} */
-    state2 = create_state(0, citiesNum, shortestPathUntilNow2, agencyMatrix);
-    assert(is_leaf(state2, citiesNum));
-    free_state(state2);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-
-
-
-
-
-    /* array of states test */
-    int arraySize = 3;
-    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 0;
-    shortestPathUntilNow[1] = 1;
-    shortestPathUntilNow[2] = 2;
-    State *oldState0 = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
-    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 0;
-    shortestPathUntilNow[1] = 2;
-    shortestPathUntilNow[2] = 1;
-    State *oldState1 = create_state(1, citiesNum, shortestPathUntilNow, agencyMatrix);
-    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow[0] = 1;
-    shortestPathUntilNow[1] = 0;
-    shortestPathUntilNow[2] = 2;
-    State *oldState2 = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
-
-    void *statesArr = allocate_array_of_states(arraySize, citiesNum, agencyMatrix);
-
-    copy_state_into_array_of_states(statesArr, 0, citiesNum, oldState0);
-    copy_state_into_array_of_states(statesArr, 1, citiesNum, oldState1);
-    copy_state_into_array_of_states(statesArr, 2, citiesNum, oldState2);
-
-    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *newState0 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *newState1 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *newState2 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-
-    copy_state_from_array_of_states(statesArr, 0, citiesNum, newState0);
-    copy_state_from_array_of_states(statesArr, 1, citiesNum, newState1);
-    copy_state_from_array_of_states(statesArr, 2, citiesNum, newState2);
-
-    assert(newState0->vertex == 2);
-    assert(newState0->cost == oldState0->cost);
-    assert(newState0->shortestPathUntilNow[0] == 0);
-    assert(newState0->shortestPathUntilNow[1] == 1);
-    assert(newState0->shortestPathUntilNow[2] == 2);
-
-    assert(newState1->vertex == 1);
-    assert(newState1->cost == oldState1->cost);
-    assert(newState1->shortestPathUntilNow[0] == 0);
-    assert(newState1->shortestPathUntilNow[1] == 2);
-    assert(newState1->shortestPathUntilNow[2] == 1);
-
-    assert(newState2->vertex == 2);
-    assert(newState2->cost == oldState2->cost);
-    assert(newState2->shortestPathUntilNow[0] == 1);
-    assert(newState2->shortestPathUntilNow[1] == 0);
-    assert(newState2->shortestPathUntilNow[2] == 2);
-
-    free_state(oldState0);
-    free_state(oldState1);
-    free_state(oldState2);
-    free_state(newState0);
-    free_state(newState1);
-    free_state(newState2);
-    free_array_of_states(statesArr);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-    int xCoord3[] = {0, 1, 1, 0, 2, 4};
-    int yCoord3[] = {0, 0, 1, 1 ,0, 0};
-    int shortestPath3[6];
-    citiesNum = 6;
-    int numStates = 20;
-    agencyMatrix = create_agency_matrix(xCoord3, yCoord3, citiesNum);
-
-    int *shortestPathUntilNow30 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow30[0] = 0;
-    /* {0, NOT_SET, NOT_SET, NOT_SET, NOT_SET, NOT_SET} */
-    State *rootState = create_state(0, citiesNum, shortestPathUntilNow30, agencyMatrix);
-
-    statesArr = allocate_array_of_states(numStates, citiesNum, agencyMatrix);
-    init_array_of_states(statesArr, numStates, citiesNum, rootState, 0, 2, agencyMatrix);
-
-    free_state(rootState);
-
-    int *emptyIntArr2 = allocate_empty_array_of_int(citiesNum);
-    State *res = create_state(NOT_SET, citiesNum, emptyIntArr2, agencyMatrix);
-
-    copy_state_from_array_of_states(statesArr, 0, citiesNum, res);
-    assert(res->vertex == 2);
-    assert(res->cost == 6);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 1);
-    assert(res->shortestPathUntilNow[2] == 2);
-
-    copy_state_from_array_of_states(statesArr, 1, citiesNum, res);
-    assert(res->vertex == 3);
-    assert(res->cost == 8);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 1);
-    assert(res->shortestPathUntilNow[2] == 3);
-
-    copy_state_from_array_of_states(statesArr, 2, citiesNum, res);
-    assert(res->vertex == 4);
-    assert(res->cost == 6);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 1);
-    assert(res->shortestPathUntilNow[2] == 4);
-
-    copy_state_from_array_of_states(statesArr, 3, citiesNum, res);
-    assert(res->vertex == 5);
-    assert(res->cost == 10);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 1);
-    assert(res->shortestPathUntilNow[2] == 5);
-
-    copy_state_from_array_of_states(statesArr, 4, citiesNum, res);
-    assert(res->vertex == 1);
-    assert(res->cost == 8);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 2);
-    assert(res->shortestPathUntilNow[2] == 1);
-
-    copy_state_from_array_of_states(statesArr, 5, citiesNum, res);
-    assert(res->vertex == 3);
-    assert(res->cost == 8);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 2);
-    assert(res->shortestPathUntilNow[2] == 3);
-
-    copy_state_from_array_of_states(statesArr, 6, citiesNum, res);
-    assert(res->vertex == 4);
-    assert(res->cost == 10);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 2);
-    assert(res->shortestPathUntilNow[2] == 4);
-
-    copy_state_from_array_of_states(statesArr, 7, citiesNum, res);
-    assert(res->vertex == 5);
-    assert(res->cost == 14);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 2);
-    assert(res->shortestPathUntilNow[2] == 5);
-
-    copy_state_from_array_of_states(statesArr, 8, citiesNum, res);
-    assert(res->vertex == 1);
-    assert(res->cost == 8);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 3);
-    assert(res->shortestPathUntilNow[2] == 1);
-
-    copy_state_from_array_of_states(statesArr, 9, citiesNum, res);
-    assert(res->vertex == 2);
-    assert(res->cost == 6);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 3);
-    assert(res->shortestPathUntilNow[2] == 2);
-
-    copy_state_from_array_of_states(statesArr, 10, citiesNum, res);
-    assert(res->vertex == 4);
-    assert(res->cost == 10);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 3);
-    assert(res->shortestPathUntilNow[2] == 4);
-
-    copy_state_from_array_of_states(statesArr, 11, citiesNum, res);
-    assert(res->vertex == 5);
-    assert(res->cost == 14);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 3);
-    assert(res->shortestPathUntilNow[2] == 5);
-
-    copy_state_from_array_of_states(statesArr, 12, citiesNum, res);
-    assert(res->vertex == 1);
-    assert(res->cost == 8);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 4);
-    assert(res->shortestPathUntilNow[2] == 1);
-
-    copy_state_from_array_of_states(statesArr, 13, citiesNum, res);
-    assert(res->vertex == 2);
-    assert(res->cost == 10);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 4);
-    assert(res->shortestPathUntilNow[2] == 2);
-
-    copy_state_from_array_of_states(statesArr, 14, citiesNum, res);
-    assert(res->vertex == 3);
-    assert(res->cost == 12);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 4);
-    assert(res->shortestPathUntilNow[2] == 3);
-
-    copy_state_from_array_of_states(statesArr, 15, citiesNum, res);
-    assert(res->vertex == 5);
-    assert(res->cost == 10);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 4);
-    assert(res->shortestPathUntilNow[2] == 5);
-
-    copy_state_from_array_of_states(statesArr, 16, citiesNum, res);
-    assert(res->vertex == 1);
-    assert(res->cost == 16);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 5);
-    assert(res->shortestPathUntilNow[2] == 1);
-
-    copy_state_from_array_of_states(statesArr, 17, citiesNum, res);
-    assert(res->vertex == 2);
-    assert(res->cost == 18);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 5);
-    assert(res->shortestPathUntilNow[2] == 2);
-
-    copy_state_from_array_of_states(statesArr, 18, citiesNum, res);
-    assert(res->vertex == 3);
-    assert(res->cost == 20);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 5);
-    assert(res->shortestPathUntilNow[2] == 3);
-
-    copy_state_from_array_of_states(statesArr, 19, citiesNum, res);
-    assert(res->vertex == 4);
-    assert(res->cost == 14);
-    assert(res->shortestPathUntilNow[0] == 0);
-    assert(res->shortestPathUntilNow[1] == 5);
-    assert(res->shortestPathUntilNow[2] == 4);
-
-    free_state(res);
-    free_array_of_states(statesArr);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-
-
-
-
-
-
-
-
-
-    /* heuristic test */
-    citiesNum = 3;
-    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-    int *shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow20[0] = 0;
-    /* {0, NOT_SET, NOT_SET} */
-    State *state20 = create_state(0, citiesNum, shortestPathUntilNow20, agencyMatrix);
-    assert(state20->cost == 0);
-    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
-    free_state(state20);
-
-    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow20[0] = 0;
-    shortestPathUntilNow20[1] = 2;
-    /* {0, 2, NOT_SET} */
-    state20 = create_state(2, citiesNum,shortestPathUntilNow20, agencyMatrix);
-    assert(state20->cost == 7);
-    assert(heuristic(state20, citiesNum, agencyMatrix) == 13);
-    free_state(state20);
-
-    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow20[0] = 0;
-    shortestPathUntilNow20[1] = 2;
-    shortestPathUntilNow20[2] = 1;
-    /* {0, 2, 1} */
-    state20 = create_state(1, citiesNum, shortestPathUntilNow20, agencyMatrix);
-    assert(state20->cost == 12);
-    assert(heuristic(state20, citiesNum, agencyMatrix) == 15);
-    free_state(state20);
-
-    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow20[0] = 0;
-    shortestPathUntilNow20[1] = 1;
-    /* {0, 1, NOT_SET} */
-    state20 = create_state(1, citiesNum, shortestPathUntilNow20, agencyMatrix);
-    assert(state20->cost == 3);
-    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
-    free_state(state20);
-
-    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow20[0] = 0;
-    shortestPathUntilNow20[1] = 1;
-    shortestPathUntilNow20[2] = 2;
-    /* {0, 1, 2} */
-    state20 = create_state(2, citiesNum, shortestPathUntilNow20, agencyMatrix);
-    assert(state20->cost == 8);
-    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
-    free_state(state20);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-
-
-
-
-
-
-
-
-    /* cpu_main test */
-    int xCoord2[] = {0, 1, 1, 0};
-    int yCoord2[] = {0, 0, 1, 1};
-    citiesNum = 4;
-    int shortestPath[4];
-    agencyMatrix = create_agency_matrix(xCoord2, yCoord2, citiesNum);
-    
-//---------------------------------------------------------------- len 4
-
-    int *shortestPathUntilNow3 = allocate_empty_array_of_int(citiesNum);
-    int minPathLen2 = INF;
-    shortestPathUntilNow3[0] = 0;
-    shortestPathUntilNow3[1] = 1;
-    shortestPathUntilNow3[2] = 2;
-    shortestPathUntilNow3[3] = 3;
-    /* {0,1,2,3} */
-    State *state3 = create_state(3, citiesNum, shortestPathUntilNow3, agencyMatrix);   
-    cpu_main(state3, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 1);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 3);
-    free_state(state3);
-
-    int *shortestPathUntilNow4 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow4[0] = 0;
-    shortestPathUntilNow4[1] = 1;
-    shortestPathUntilNow4[2] = 3;
-    shortestPathUntilNow4[3] = 2;
-    /* {0,1,3,2} */
-    State *state4 = create_state(2, citiesNum, shortestPathUntilNow4, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state4, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 1);
-    assert(shortestPath[2] == 3);
-    assert(shortestPath[3] == 2);
-    free_state(state4);
-
-    int *shortestPathUntilNow5 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow5[0] = 0;
-    shortestPathUntilNow5[1] = 2;
-    shortestPathUntilNow5[2] = 1;
-    shortestPathUntilNow5[3] = 3;
-    /* {0,2,1,3} */
-    State *state5 = create_state(3, citiesNum, shortestPathUntilNow5, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state5, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 2);
-    assert(shortestPath[2] == 1);
-    assert(shortestPath[3] == 3);
-    free_state(state5);
-
-    int *shortestPathUntilNow6 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow6[0] = 0;
-    shortestPathUntilNow6[1] = 2;
-    shortestPathUntilNow6[2] = 3;
-    shortestPathUntilNow6[3] = 1;
-    /* {0,2,3,1} */
-    State *state6 = create_state(1, citiesNum, shortestPathUntilNow6, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state6, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 2);
-    assert(shortestPath[2] == 3);
-    assert(shortestPath[3] == 1);
-    free_state(state6);
-
-    int *shortestPathUntilNow7 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow7[0] = 0;
-    shortestPathUntilNow7[1] = 3;
-    shortestPathUntilNow7[2] = 1;
-    shortestPathUntilNow7[3] = 2;
-    /* {0,3,1,2} */
-    State *state7 = create_state(2, citiesNum, shortestPathUntilNow7, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state7, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 3);
-    assert(shortestPath[2] == 1);
-    assert(shortestPath[3] == 2);
-    free_state(state7);
-
-    int *shortestPathUntilNow8 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow8[0] = 0;
-    shortestPathUntilNow8[1] = 3;
-    shortestPathUntilNow8[2] = 2;
-    shortestPathUntilNow8[3] = 1;
-    /* {0,3,2,1} */
-    State *state8 = create_state(1, citiesNum, shortestPathUntilNow8, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state8, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 3);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 1);
-    free_state(state8);
-
-//---------------------------------------------------------------- len 3
-
-    int *shortestPathUntilNow9 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow9[0] = 0;
-    shortestPathUntilNow9[1] = 1;
-    shortestPathUntilNow9[2] = 2;
-    /* {0,1,2,NOT_SET} */
-    State *state9 = create_state(2, citiesNum, shortestPathUntilNow9, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state9, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 1);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 3);
-    free_state(state9);
-
-    int *shortestPathUntilNow10 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow10[0] = 0;
-    shortestPathUntilNow10[1] = 1;
-    shortestPathUntilNow10[2] = 3;
-    /* {0,1,3,NOT_SET} */
-    State *state10 = create_state(3, citiesNum, shortestPathUntilNow10, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state10, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 1);
-    assert(shortestPath[2] == 3);
-    assert(shortestPath[3] == 2);
-    free_state(state10);
-
-    int *shortestPathUntilNow11 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow11[0] = 0;
-    shortestPathUntilNow11[1] = 2;
-    shortestPathUntilNow11[2] = 1;
-    /* {0,2,1,NOT_SET} */
-    State *state11 = create_state(1, citiesNum, shortestPathUntilNow11, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state11, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 2);
-    assert(shortestPath[2] == 1);
-    assert(shortestPath[3] == 3);
-    free_state(state11);
-
-    int *shortestPathUntilNow12 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow12[0] = 0;
-    shortestPathUntilNow12[1] = 2;
-    shortestPathUntilNow12[2] = 3;
-    /* {0,2,3,NOT_SET} */
-    State *state12 = create_state(3, citiesNum, shortestPathUntilNow12, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state12, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 2);
-    assert(shortestPath[2] == 3);
-    assert(shortestPath[3] == 1);
-    free_state(state12);
-
-    int *shortestPathUntilNow13 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow13[0] = 0;
-    shortestPathUntilNow13[1] = 3;
-    shortestPathUntilNow13[2] = 1;
-    /* {0,3,1,NOT_SET} */
-    State *state13 = create_state(1, citiesNum, shortestPathUntilNow13, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state13, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 3);
-    assert(shortestPath[2] == 1);
-    assert(shortestPath[3] == 2);
-    free_state(state13);
-
-    int *shortestPathUntilNow14 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow14[0] = 0;
-    shortestPathUntilNow14[1] = 3;
-    shortestPathUntilNow14[2] = 2;
-    /* {0,3,2,NOT_SET} */
-    State *state14 = create_state(2, citiesNum, shortestPathUntilNow14, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state14, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 3);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 1);
-    free_state(state14);
-
-//---------------------------------------------------------------- len 2
-
-    int *shortestPathUntilNow15 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow15[0] = 0;
-    shortestPathUntilNow15[1] = 1;
-    /* {0,1,NOT_SET,NOT_SET} */
-    State *state15 = create_state(1, citiesNum, shortestPathUntilNow15, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state15, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 1);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 3);
-    free_state(state15);
-
-    int *shortestPathUntilNow16 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow16[0] = 0;
-    shortestPathUntilNow16[1] = 2;
-    /* {0,2,NOT_SET,NOT_SET} */
-    State *state16 = create_state(2, citiesNum, shortestPathUntilNow16, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state16, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 16);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 2);
-    assert((shortestPath[2] == 1 && shortestPath[3] == 3) ||
-           (shortestPath[2] == 3 && shortestPath[3] == 1));
-    free_state(state16);
-
-    int *shortestPathUntilNow17 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow17[0] = 0;
-    shortestPathUntilNow17[1] = 3;
-    /* {0,3,NOT_SET,NOT_SET} */
-    State *state17 = create_state(3, citiesNum, shortestPathUntilNow17, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state17, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert(shortestPath[1] == 3);
-    assert(shortestPath[2] == 2);
-    assert(shortestPath[3] == 1);
-    free_state(state17);
-    
-//---------------------------------------------------------------- len 1
-
-    int *shortestPathUntilNow18 = allocate_empty_array_of_int(citiesNum);
-    shortestPathUntilNow18[0] = 0;
-    /* {0,NOT_SET,NOT_SET,NOT_SET} */
-    State *state18 = create_state(0, citiesNum, shortestPathUntilNow18, agencyMatrix);   
-    minPathLen2 = INF;
-    cpu_main(state18, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
-    assert(minPathLen2 == 12);
-    assert(shortestPath[0] == 0);
-    assert((shortestPath[1]==1 && shortestPath[2]==2 && shortestPath[3]==3) ||
-           (shortestPath[1]==3 && shortestPath[2]==2 && shortestPath[3]==1));
-    free_state(state18);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-
-
-
-
-    /* extra test */
-	citiesNum = 6;
-	int xCoord60[] = {1, 3, 5, 9, 2,  3};   
-	int yCoord60[] = {1, 3, 5, 7, 9, 11};   
-    agencyMatrix = create_agency_matrix(xCoord60, yCoord60, citiesNum);
-    int *sp = allocate_empty_array_of_int(citiesNum);
-    int *ea5 = allocate_empty_array_of_int(citiesNum);
-    ea5[0] = 0;
-    State *rs = create_state(0, citiesNum, ea5, agencyMatrix);
-
-    int minPathLen = INF;
-    minPathLen2 = INF;
-    cpu_main(rs, citiesNum, agencyMatrix, &minPathLen, sp);
-    assert(minPathLen == get_path_len(sp, citiesNum, agencyMatrix)); 
-
-
-    free_state(rs);
-    free_array_of_int(sp);
-    free_agency_matrix(agencyMatrix, citiesNum);
-
-
-
-}
+////-----------------------------------------------------------------------------
+////                                  tests
+////                              FIXME:remove
+////-----------------------------------------------------------------------------
+//
+//int main() {
+//
+//
+//
+//    /* allocate_empty_array_of_int, copy_array_of_int, is_in and 
+//     * free_array_of_int test */
+//    int size = 5;
+//    int *arr100 = allocate_empty_array_of_int(size);
+//    int *arr101 = allocate_empty_array_of_int(size);
+//    for (int i=0 ; i<size ; i++) {
+//        assert(arr100[i] == NOT_SET);
+//        assert(arr101[i] == NOT_SET);
+//    }
+//
+//    for (int i=0 ; i<size ; i++) {
+//        arr100[i] = i;
+//        arr101[i] = i;
+//    }
+//
+//    int *arr102 = allocate_empty_array_of_int(size);
+//    int *arr103 = allocate_empty_array_of_int(size);
+//
+//    assert( !is_in(3, arr102, size));
+//    assert( !is_in(5, arr102, size));
+//    assert( !is_in(0, arr103, size));
+//
+//    copy_array_of_int(arr100, arr102, size);
+//    copy_array_of_int(arr101, arr103, size);
+//
+//    for (int i=0 ; i<size ; i++) {
+//        assert(arr102[i] == i);
+//        assert(arr103[i] == i);
+//    }
+//
+//    assert( is_in(3, arr102, size));
+//    assert( !is_in(5, arr102, size));
+//    assert( is_in(0, arr103, size));
+//
+//    free_array_of_int(arr100);
+//    free_array_of_int(arr101);
+//    free_array_of_int(arr102);
+//    free_array_of_int(arr103);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//    int xCoord[3] = {1, 1, 1};
+//    int yCoord[3] = {1, 2, 4};
+//    int citiesNum = 3;
+//
+//
+//
+//
+//
+//
+//
+//
+//    /* create matrix test */
+//    int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    assert(agencyMatrix[0][0] == INF);
+//    assert(agencyMatrix[0][1] == 3);
+//    assert(agencyMatrix[0][2] == 7);
+//    assert(agencyMatrix[1][0] == 3);
+//    assert(agencyMatrix[1][1] == INF);
+//    assert(agencyMatrix[1][2] == 5);
+//    assert(agencyMatrix[2][0] == 7);
+//    assert(agencyMatrix[2][1] == 5);
+//    assert(agencyMatrix[2][2] == INF);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//    /* state test */
+//    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 1;
+//    /* {1, NOT_SET, NOT_SET} */
+//    State *state = create_state(1, citiesNum, shortestPathUntilNow, agencyMatrix);
+//    assert(state->vertex == 1);
+//    assert(state->cost == 0);
+//    assert(state->shortestPathUntilNow[0] == 1);
+//    assert(state->shortestPathUntilNow[1] == NOT_SET);
+//    assert(state->shortestPathUntilNow[2] == NOT_SET);
+//    assert( !is_leaf(state, citiesNum) );
+//    free_state(state);
+//
+//    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 1;
+//    shortestPathUntilNow[1] = 2;
+//    /* {1, 2, NOT_SET} */
+//    state = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
+//    assert(state->vertex == 2);
+//    assert(state->cost == 5);
+//    assert( !is_leaf(state, citiesNum) );
+//    free_state(state);
+//
+//    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 1;
+//    shortestPathUntilNow[1] = 2;
+//    shortestPathUntilNow[2] = 0;
+//    /* {1, 2, 0} */
+//    state = create_state(0, citiesNum,shortestPathUntilNow, agencyMatrix);
+//    assert( is_leaf(state, citiesNum) );
+//    assert(state->vertex == 0);
+//    assert(state->cost == 12);
+//    free_state(state);
+//
+//    int *shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow2[0] = 1;
+//    /* {1, NOT_SET, NOT_SET} */
+//    State *state2 = create_state(1, citiesNum, shortestPathUntilNow2, agencyMatrix);
+//    assert(!is_leaf(state2, citiesNum));
+//    free_state(state2);
+//
+//    shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow2[0] = 1;
+//    shortestPathUntilNow2[1] = 2;
+//    /* {1, 2, NOT_SET} */
+//    state2 = create_state(2, citiesNum, shortestPathUntilNow2, agencyMatrix);
+//    assert(!is_leaf(state2, citiesNum));
+//    free_state(state2);
+//
+//    shortestPathUntilNow2 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow2[0] = 1;
+//    shortestPathUntilNow2[1] = 2;
+//    shortestPathUntilNow2[2] = 0;
+//    /* {1, 2, 0} */
+//    state2 = create_state(0, citiesNum, shortestPathUntilNow2, agencyMatrix);
+//    assert(is_leaf(state2, citiesNum));
+//    free_state(state2);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//
+//
+//
+//
+//
+//    /* array of states test */
+//    int arraySize = 3;
+//    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 0;
+//    shortestPathUntilNow[1] = 1;
+//    shortestPathUntilNow[2] = 2;
+//    State *oldState0 = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
+//    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 0;
+//    shortestPathUntilNow[1] = 2;
+//    shortestPathUntilNow[2] = 1;
+//    State *oldState1 = create_state(1, citiesNum, shortestPathUntilNow, agencyMatrix);
+//    shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow[0] = 1;
+//    shortestPathUntilNow[1] = 0;
+//    shortestPathUntilNow[2] = 2;
+//    State *oldState2 = create_state(2, citiesNum, shortestPathUntilNow, agencyMatrix);
+//
+//    void *statesArr = allocate_array_of_states(arraySize, citiesNum, agencyMatrix);
+//
+//    copy_state_into_array_of_states(statesArr, 0, citiesNum, oldState0);
+//    copy_state_into_array_of_states(statesArr, 1, citiesNum, oldState1);
+//    copy_state_into_array_of_states(statesArr, 2, citiesNum, oldState2);
+//
+//    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
+//    State *newState0 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+//    emptyIntArr = allocate_empty_array_of_int(citiesNum);
+//    State *newState1 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+//    emptyIntArr = allocate_empty_array_of_int(citiesNum);
+//    State *newState2 = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+//
+//    copy_state_from_array_of_states(statesArr, 0, citiesNum, newState0);
+//    copy_state_from_array_of_states(statesArr, 1, citiesNum, newState1);
+//    copy_state_from_array_of_states(statesArr, 2, citiesNum, newState2);
+//
+//    assert(newState0->vertex == 2);
+//    assert(newState0->cost == oldState0->cost);
+//    assert(newState0->shortestPathUntilNow[0] == 0);
+//    assert(newState0->shortestPathUntilNow[1] == 1);
+//    assert(newState0->shortestPathUntilNow[2] == 2);
+//
+//    assert(newState1->vertex == 1);
+//    assert(newState1->cost == oldState1->cost);
+//    assert(newState1->shortestPathUntilNow[0] == 0);
+//    assert(newState1->shortestPathUntilNow[1] == 2);
+//    assert(newState1->shortestPathUntilNow[2] == 1);
+//
+//    assert(newState2->vertex == 2);
+//    assert(newState2->cost == oldState2->cost);
+//    assert(newState2->shortestPathUntilNow[0] == 1);
+//    assert(newState2->shortestPathUntilNow[1] == 0);
+//    assert(newState2->shortestPathUntilNow[2] == 2);
+//
+//    free_state(oldState0);
+//    free_state(oldState1);
+//    free_state(oldState2);
+//    free_state(newState0);
+//    free_state(newState1);
+//    free_state(newState2);
+//    free_array_of_states(statesArr);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//    int xCoord3[] = {0, 1, 1, 0, 2, 4};
+//    int yCoord3[] = {0, 0, 1, 1 ,0, 0};
+//    int shortestPath3[6];
+//    citiesNum = 6;
+//    int numStates = 20;
+//    agencyMatrix = create_agency_matrix(xCoord3, yCoord3, citiesNum);
+//
+//    int *shortestPathUntilNow30 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow30[0] = 0;
+//    /* {0, NOT_SET, NOT_SET, NOT_SET, NOT_SET, NOT_SET} */
+//    State *rootState = create_state(0, citiesNum, shortestPathUntilNow30, agencyMatrix);
+//
+//    statesArr = allocate_array_of_states(numStates, citiesNum, agencyMatrix);
+//    init_array_of_states(statesArr, numStates, citiesNum, rootState, 0, 2, agencyMatrix);
+//
+//    free_state(rootState);
+//
+//    int *emptyIntArr2 = allocate_empty_array_of_int(citiesNum);
+//    State *res = create_state(NOT_SET, citiesNum, emptyIntArr2, agencyMatrix);
+//
+//    copy_state_from_array_of_states(statesArr, 0, citiesNum, res);
+//    assert(res->vertex == 2);
+//    assert(res->cost == 6);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 1);
+//    assert(res->shortestPathUntilNow[2] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 1, citiesNum, res);
+//    assert(res->vertex == 3);
+//    assert(res->cost == 8);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 1);
+//    assert(res->shortestPathUntilNow[2] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 2, citiesNum, res);
+//    assert(res->vertex == 4);
+//    assert(res->cost == 6);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 1);
+//    assert(res->shortestPathUntilNow[2] == 4);
+//
+//    copy_state_from_array_of_states(statesArr, 3, citiesNum, res);
+//    assert(res->vertex == 5);
+//    assert(res->cost == 10);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 1);
+//    assert(res->shortestPathUntilNow[2] == 5);
+//
+//    copy_state_from_array_of_states(statesArr, 4, citiesNum, res);
+//    assert(res->vertex == 1);
+//    assert(res->cost == 8);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 2);
+//    assert(res->shortestPathUntilNow[2] == 1);
+//
+//    copy_state_from_array_of_states(statesArr, 5, citiesNum, res);
+//    assert(res->vertex == 3);
+//    assert(res->cost == 8);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 2);
+//    assert(res->shortestPathUntilNow[2] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 6, citiesNum, res);
+//    assert(res->vertex == 4);
+//    assert(res->cost == 10);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 2);
+//    assert(res->shortestPathUntilNow[2] == 4);
+//
+//    copy_state_from_array_of_states(statesArr, 7, citiesNum, res);
+//    assert(res->vertex == 5);
+//    assert(res->cost == 14);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 2);
+//    assert(res->shortestPathUntilNow[2] == 5);
+//
+//    copy_state_from_array_of_states(statesArr, 8, citiesNum, res);
+//    assert(res->vertex == 1);
+//    assert(res->cost == 8);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 3);
+//    assert(res->shortestPathUntilNow[2] == 1);
+//
+//    copy_state_from_array_of_states(statesArr, 9, citiesNum, res);
+//    assert(res->vertex == 2);
+//    assert(res->cost == 6);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 3);
+//    assert(res->shortestPathUntilNow[2] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 10, citiesNum, res);
+//    assert(res->vertex == 4);
+//    assert(res->cost == 10);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 3);
+//    assert(res->shortestPathUntilNow[2] == 4);
+//
+//    copy_state_from_array_of_states(statesArr, 11, citiesNum, res);
+//    assert(res->vertex == 5);
+//    assert(res->cost == 14);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 3);
+//    assert(res->shortestPathUntilNow[2] == 5);
+//
+//    copy_state_from_array_of_states(statesArr, 12, citiesNum, res);
+//    assert(res->vertex == 1);
+//    assert(res->cost == 8);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 4);
+//    assert(res->shortestPathUntilNow[2] == 1);
+//
+//    copy_state_from_array_of_states(statesArr, 13, citiesNum, res);
+//    assert(res->vertex == 2);
+//    assert(res->cost == 10);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 4);
+//    assert(res->shortestPathUntilNow[2] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 14, citiesNum, res);
+//    assert(res->vertex == 3);
+//    assert(res->cost == 12);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 4);
+//    assert(res->shortestPathUntilNow[2] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 15, citiesNum, res);
+//    assert(res->vertex == 5);
+//    assert(res->cost == 10);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 4);
+//    assert(res->shortestPathUntilNow[2] == 5);
+//
+//    copy_state_from_array_of_states(statesArr, 16, citiesNum, res);
+//    assert(res->vertex == 1);
+//    assert(res->cost == 16);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 5);
+//    assert(res->shortestPathUntilNow[2] == 1);
+//
+//    copy_state_from_array_of_states(statesArr, 17, citiesNum, res);
+//    assert(res->vertex == 2);
+//    assert(res->cost == 18);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 5);
+//    assert(res->shortestPathUntilNow[2] == 2);
+//
+//    copy_state_from_array_of_states(statesArr, 18, citiesNum, res);
+//    assert(res->vertex == 3);
+//    assert(res->cost == 20);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 5);
+//    assert(res->shortestPathUntilNow[2] == 3);
+//
+//    copy_state_from_array_of_states(statesArr, 19, citiesNum, res);
+//    assert(res->vertex == 4);
+//    assert(res->cost == 14);
+//    assert(res->shortestPathUntilNow[0] == 0);
+//    assert(res->shortestPathUntilNow[1] == 5);
+//    assert(res->shortestPathUntilNow[2] == 4);
+//
+//    free_state(res);
+//    free_array_of_states(statesArr);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//    /* heuristic test */
+//    citiesNum = 3;
+//    agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
+//    int *shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow20[0] = 0;
+//    /* {0, NOT_SET, NOT_SET} */
+//    State *state20 = create_state(0, citiesNum, shortestPathUntilNow20, agencyMatrix);
+//    assert(state20->cost == 0);
+//    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
+//    free_state(state20);
+//
+//    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow20[0] = 0;
+//    shortestPathUntilNow20[1] = 2;
+//    /* {0, 2, NOT_SET} */
+//    state20 = create_state(2, citiesNum,shortestPathUntilNow20, agencyMatrix);
+//    assert(state20->cost == 7);
+//    assert(heuristic(state20, citiesNum, agencyMatrix) == 13);
+//    free_state(state20);
+//
+//    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow20[0] = 0;
+//    shortestPathUntilNow20[1] = 2;
+//    shortestPathUntilNow20[2] = 1;
+//    /* {0, 2, 1} */
+//    state20 = create_state(1, citiesNum, shortestPathUntilNow20, agencyMatrix);
+//    assert(state20->cost == 12);
+//    assert(heuristic(state20, citiesNum, agencyMatrix) == 15);
+//    free_state(state20);
+//
+//    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow20[0] = 0;
+//    shortestPathUntilNow20[1] = 1;
+//    /* {0, 1, NOT_SET} */
+//    state20 = create_state(1, citiesNum, shortestPathUntilNow20, agencyMatrix);
+//    assert(state20->cost == 3);
+//    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
+//    free_state(state20);
+//
+//    shortestPathUntilNow20 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow20[0] = 0;
+//    shortestPathUntilNow20[1] = 1;
+//    shortestPathUntilNow20[2] = 2;
+//    /* {0, 1, 2} */
+//    state20 = create_state(2, citiesNum, shortestPathUntilNow20, agencyMatrix);
+//    assert(state20->cost == 8);
+//    assert(heuristic(state20, citiesNum, agencyMatrix) == 11);
+//    free_state(state20);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//    /* cpu_main test */
+//    int xCoord2[] = {0, 1, 1, 0};
+//    int yCoord2[] = {0, 0, 1, 1};
+//    citiesNum = 4;
+//    int shortestPath[4];
+//    agencyMatrix = create_agency_matrix(xCoord2, yCoord2, citiesNum);
+//    
+////---------------------------------------------------------------- len 4
+//
+//    int *shortestPathUntilNow3 = allocate_empty_array_of_int(citiesNum);
+//    int minPathLen2 = INF;
+//    shortestPathUntilNow3[0] = 0;
+//    shortestPathUntilNow3[1] = 1;
+//    shortestPathUntilNow3[2] = 2;
+//    shortestPathUntilNow3[3] = 3;
+//    /* {0,1,2,3} */
+//    State *state3 = create_state(3, citiesNum, shortestPathUntilNow3, agencyMatrix);   
+//    cpu_main(state3, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 1);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 3);
+//    free_state(state3);
+//
+//    int *shortestPathUntilNow4 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow4[0] = 0;
+//    shortestPathUntilNow4[1] = 1;
+//    shortestPathUntilNow4[2] = 3;
+//    shortestPathUntilNow4[3] = 2;
+//    /* {0,1,3,2} */
+//    State *state4 = create_state(2, citiesNum, shortestPathUntilNow4, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state4, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 1);
+//    assert(shortestPath[2] == 3);
+//    assert(shortestPath[3] == 2);
+//    free_state(state4);
+//
+//    int *shortestPathUntilNow5 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow5[0] = 0;
+//    shortestPathUntilNow5[1] = 2;
+//    shortestPathUntilNow5[2] = 1;
+//    shortestPathUntilNow5[3] = 3;
+//    /* {0,2,1,3} */
+//    State *state5 = create_state(3, citiesNum, shortestPathUntilNow5, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state5, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 2);
+//    assert(shortestPath[2] == 1);
+//    assert(shortestPath[3] == 3);
+//    free_state(state5);
+//
+//    int *shortestPathUntilNow6 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow6[0] = 0;
+//    shortestPathUntilNow6[1] = 2;
+//    shortestPathUntilNow6[2] = 3;
+//    shortestPathUntilNow6[3] = 1;
+//    /* {0,2,3,1} */
+//    State *state6 = create_state(1, citiesNum, shortestPathUntilNow6, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state6, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 2);
+//    assert(shortestPath[2] == 3);
+//    assert(shortestPath[3] == 1);
+//    free_state(state6);
+//
+//    int *shortestPathUntilNow7 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow7[0] = 0;
+//    shortestPathUntilNow7[1] = 3;
+//    shortestPathUntilNow7[2] = 1;
+//    shortestPathUntilNow7[3] = 2;
+//    /* {0,3,1,2} */
+//    State *state7 = create_state(2, citiesNum, shortestPathUntilNow7, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state7, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 3);
+//    assert(shortestPath[2] == 1);
+//    assert(shortestPath[3] == 2);
+//    free_state(state7);
+//
+//    int *shortestPathUntilNow8 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow8[0] = 0;
+//    shortestPathUntilNow8[1] = 3;
+//    shortestPathUntilNow8[2] = 2;
+//    shortestPathUntilNow8[3] = 1;
+//    /* {0,3,2,1} */
+//    State *state8 = create_state(1, citiesNum, shortestPathUntilNow8, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state8, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 3);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 1);
+//    free_state(state8);
+//
+////---------------------------------------------------------------- len 3
+//
+//    int *shortestPathUntilNow9 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow9[0] = 0;
+//    shortestPathUntilNow9[1] = 1;
+//    shortestPathUntilNow9[2] = 2;
+//    /* {0,1,2,NOT_SET} */
+//    State *state9 = create_state(2, citiesNum, shortestPathUntilNow9, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state9, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 1);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 3);
+//    free_state(state9);
+//
+//    int *shortestPathUntilNow10 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow10[0] = 0;
+//    shortestPathUntilNow10[1] = 1;
+//    shortestPathUntilNow10[2] = 3;
+//    /* {0,1,3,NOT_SET} */
+//    State *state10 = create_state(3, citiesNum, shortestPathUntilNow10, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state10, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 1);
+//    assert(shortestPath[2] == 3);
+//    assert(shortestPath[3] == 2);
+//    free_state(state10);
+//
+//    int *shortestPathUntilNow11 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow11[0] = 0;
+//    shortestPathUntilNow11[1] = 2;
+//    shortestPathUntilNow11[2] = 1;
+//    /* {0,2,1,NOT_SET} */
+//    State *state11 = create_state(1, citiesNum, shortestPathUntilNow11, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state11, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 2);
+//    assert(shortestPath[2] == 1);
+//    assert(shortestPath[3] == 3);
+//    free_state(state11);
+//
+//    int *shortestPathUntilNow12 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow12[0] = 0;
+//    shortestPathUntilNow12[1] = 2;
+//    shortestPathUntilNow12[2] = 3;
+//    /* {0,2,3,NOT_SET} */
+//    State *state12 = create_state(3, citiesNum, shortestPathUntilNow12, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state12, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 2);
+//    assert(shortestPath[2] == 3);
+//    assert(shortestPath[3] == 1);
+//    free_state(state12);
+//
+//    int *shortestPathUntilNow13 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow13[0] = 0;
+//    shortestPathUntilNow13[1] = 3;
+//    shortestPathUntilNow13[2] = 1;
+//    /* {0,3,1,NOT_SET} */
+//    State *state13 = create_state(1, citiesNum, shortestPathUntilNow13, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state13, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 3);
+//    assert(shortestPath[2] == 1);
+//    assert(shortestPath[3] == 2);
+//    free_state(state13);
+//
+//    int *shortestPathUntilNow14 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow14[0] = 0;
+//    shortestPathUntilNow14[1] = 3;
+//    shortestPathUntilNow14[2] = 2;
+//    /* {0,3,2,NOT_SET} */
+//    State *state14 = create_state(2, citiesNum, shortestPathUntilNow14, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state14, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 3);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 1);
+//    free_state(state14);
+//
+////---------------------------------------------------------------- len 2
+//
+//    int *shortestPathUntilNow15 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow15[0] = 0;
+//    shortestPathUntilNow15[1] = 1;
+//    /* {0,1,NOT_SET,NOT_SET} */
+//    State *state15 = create_state(1, citiesNum, shortestPathUntilNow15, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state15, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 1);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 3);
+//    free_state(state15);
+//
+//    int *shortestPathUntilNow16 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow16[0] = 0;
+//    shortestPathUntilNow16[1] = 2;
+//    /* {0,2,NOT_SET,NOT_SET} */
+//    State *state16 = create_state(2, citiesNum, shortestPathUntilNow16, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state16, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 16);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 2);
+//    assert((shortestPath[2] == 1 && shortestPath[3] == 3) ||
+//           (shortestPath[2] == 3 && shortestPath[3] == 1));
+//    free_state(state16);
+//
+//    int *shortestPathUntilNow17 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow17[0] = 0;
+//    shortestPathUntilNow17[1] = 3;
+//    /* {0,3,NOT_SET,NOT_SET} */
+//    State *state17 = create_state(3, citiesNum, shortestPathUntilNow17, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state17, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert(shortestPath[1] == 3);
+//    assert(shortestPath[2] == 2);
+//    assert(shortestPath[3] == 1);
+//    free_state(state17);
+//    
+////---------------------------------------------------------------- len 1
+//
+//    int *shortestPathUntilNow18 = allocate_empty_array_of_int(citiesNum);
+//    shortestPathUntilNow18[0] = 0;
+//    /* {0,NOT_SET,NOT_SET,NOT_SET} */
+//    State *state18 = create_state(0, citiesNum, shortestPathUntilNow18, agencyMatrix);   
+//    minPathLen2 = INF;
+//    cpu_main(state18, citiesNum, agencyMatrix, &minPathLen2, shortestPath);
+//    assert(minPathLen2 == 12);
+//    assert(shortestPath[0] == 0);
+//    assert((shortestPath[1]==1 && shortestPath[2]==2 && shortestPath[3]==3) ||
+//           (shortestPath[1]==3 && shortestPath[2]==2 && shortestPath[3]==1));
+//    free_state(state18);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//
+//
+//
+//
+//    /* extra test */
+//	citiesNum = 6;
+//	int xCoord60[] = {1, 3, 5, 9, 2,  3};   
+//	int yCoord60[] = {1, 3, 5, 7, 9, 11};   
+//    agencyMatrix = create_agency_matrix(xCoord60, yCoord60, citiesNum);
+//    int *sp = allocate_empty_array_of_int(citiesNum);
+//    int *ea5 = allocate_empty_array_of_int(citiesNum);
+//    ea5[0] = 0;
+//    State *rs = create_state(0, citiesNum, ea5, agencyMatrix);
+//
+//    int minPathLen = INF;
+//    minPathLen2 = INF;
+//    cpu_main(rs, citiesNum, agencyMatrix, &minPathLen, sp);
+//    assert(minPathLen == get_path_len(sp, citiesNum, agencyMatrix)); 
+//
+//
+//    free_state(rs);
+//    free_array_of_int(sp);
+//    free_agency_matrix(agencyMatrix, citiesNum);
+//
+//
+//
+//}
 
