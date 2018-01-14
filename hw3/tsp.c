@@ -338,7 +338,7 @@ int get_path_len(int *arr, int size, int **agencyMatrix) {
  * the minimum lenght as a return value
  * the shortest path in shortestPath variable */
 void cpu_main(State *state, int citiesNum, int **agencyMatrix, int *minPathLen,
-        int *shortestPath) {
+        int *shortestPath, MPI_Request *getBoundRequest, int *newBound) {
 
     if (is_leaf(state, citiesNum)) {
         int rootVertex = state->shortestPathUntilNow[0];
@@ -386,7 +386,8 @@ void cpu_main(State *state, int citiesNum, int **agencyMatrix, int *minPathLen,
         }
 
         /* compute the result for this son */
-        cpu_main(son, citiesNum, agencyMatrix, minPathLen, shortestPath);
+        cpu_main(son, citiesNum, agencyMatrix, minPathLen, shortestPath,
+                getBoundRequest, newBound);
 
         free_state(son);
     }
@@ -464,8 +465,7 @@ void test_and_handle_bound_update_master(MPI_Request *getBoundRequest,
 /* test if a bound update has arrived, update the minPathLenLocal, erase the
  * curren shortestPath and renew listening */
 void test_and_handle_bound_update_worker(MPI_Request *getBoundRequest,
-        int *minPathLen, int *shortestPathLocal,
-        int citiesNum, int *newBound) {
+        int *minPathLen, int *shortestPathLocal, int citiesNum, int *newBound) {
 
     MPI_Status getStatus;
     int rc, boundArrived = false;
@@ -545,6 +545,8 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
  * of all other tasks and return the best result */
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
+
+    printf("master\n");
 
     int numTasks, receiveNewBound, *minPathLen, *nextPrefix;
     int numEmptyStatesSent = 0;
@@ -691,6 +693,8 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
+    printf("other\n");
+
     int rank, cpuMinPathLen, receiveNewBound, minPathLenLocal, jobTmp;
     int *sendNewBound, *emptyIntArr, *shortestPathLocal, *cpuShortestPath;
     bool finishedRoutine;
@@ -749,9 +753,10 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         begin_c = clock();
 
         /* run cpu_main on state */
-        cpuMinPathLen = INF;
+        cpuMinPathLen = minPathLenLocal;
+        //cpuMinPathLen = INF;
         cpu_main(state, citiesNum, agencyMatrix, &cpuMinPathLen,
-                    cpuShortestPath);
+                    cpuShortestPath, &getBoundRequest, &receiveNewBound);
 
         end_c = clock();
 		cpuMainSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
