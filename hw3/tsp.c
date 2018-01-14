@@ -426,10 +426,10 @@ void build_state_type(State *state, int citiesNum, MPI_Datatype *newTypeName) {
 
 
 /* start a async listeninig to new bound updates */
-void listen_bound_update_async(MPI_Request *request, int *newBound) {
+void listen_bound_update_async(MPI_Request *getBoundRequest, int *newBound) {
 
     int rc = MPI_Irecv(newBound, 1, MPI_INT, MPI_ANY_SOURCE, BOUND_TAG,
-            MPI_COMM_WORLD, request); 
+            MPI_COMM_WORLD, getBoundRequest); 
     assert(rc == MPI_SUCCESS);
 }
 
@@ -442,28 +442,80 @@ void listen_job_request_async(MPI_Request *request) {
     assert(rc == MPI_SUCCESS);
 }
 
-/* test if a bound update has arrived and notify all tasks if needed
- * return:
- * true if new bound arrived and false otherwise */
-bool test_and_handle_bound_update(MPI_Request *request, int *minPathLen,
-        int *newBound) {
+/* test if a bound update has arrived, update the minPathLenLocal and renew
+ * listening */
+void test_and_handle_bound_update_master(MPI_Request *getBoundRequest,
+        int *minPathLen, int *newBound) {
 
     MPI_Status status;
-    MPI_Request broadcastRequest;
     int boundArrived = false;
 
-    int rc = MPI_Test(request, &boundArrived, &status);
+    int rc = MPI_Test(getBoundRequest, &boundArrived, &status);
     assert(rc == MPI_SUCCESS);
 
     if (boundArrived) {
         if (*newBound < *minPathLen) {
             *minPathLen = *newBound;
-            MPI_Ibcast(minPathLen, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-                    &broadcastRequest);
         }
+        listen_bound_update_async(getBoundRequest, newBound);
     }
+}
 
-    return boundArrived;
+/* test if a bound update has arrived, update the minPathLenLocal, erase the
+ * curren shortestPath and renew listening */
+void test_and_handle_bound_update_worker(MPI_Request *getBoundRequest,
+        int *minPathLen, int *shortestPathLocal,
+        int citiesNum, int *newBound) {
+
+    MPI_Status getStatus;
+    int rc, boundArrived = false;
+
+    rc = MPI_Test(getBoundRequest, &boundArrived, &getStatus);
+    assert(rc == MPI_SUCCESS);
+
+    if (boundArrived) {
+        if (*newBound < *minPathLen) {
+
+            /* now that the buffer is protected we can edit minPathLen */
+            *minPathLen = *newBound;
+
+            /* erase the current result - it is not valid anymore */
+            for (int i=0 ; i<citiesNum ; i++) {
+                shortestPathLocal[i] = NOT_SET;
+            }
+        }
+        listen_bound_update_async(getBoundRequest, newBound);
+    }
+}
+
+/* use a-sync point to point communication to notify all other tasks */
+void notify_all_new_bound(MPI_Request *sendBoundRequest, int *minPathLenLocal,
+        int *sendNewBound) {
+
+    int rc, rank, numTasks;
+    MPI_Status tmpStatus;
+    /* the first time we shouldn't wait for previous send to finish */
+    static bool isSending = false;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
+
+    /* keep minPathLenLocal safe */
+    *sendNewBound = *minPathLenLocal;
+
+    /* for for previous send to finish */
+    if (isSending)
+        MPI_Wait(sendBoundRequest, &tmpStatus);
+
+    for (int i=0 ; i<numTasks ; i++) {
+        if (i == rank)
+            continue;
+
+        rc = MPI_Issend(sendNewBound, 1, MPI_INT, /*dst=*/i, BOUND_TAG,
+                MPI_COMM_WORLD, sendBoundRequest);
+        assert(rc == MPI_SUCCESS);
+    }
+    isSending = true;
 }
 
 /* test if a job request has arrived and and send new job if needed
@@ -494,25 +546,24 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    int numTasks;
+    int numTasks, receiveNewBound, *minPathLen, *nextPrefix;
     int numEmptyStatesSent = 0;
-    MPI_Request boundRequest, jobRequest;
+    MPI_Request getBoundRequest, jobRequest;
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
 
     /* keep the best len found and the best coresponding path */
-    int *minPathLen = malloc(sizeof(int)); // set on heap beacause it is 
+    minPathLen = malloc(sizeof(int)); // set on heap beacause it is 
     *minPathLen = INF;                     // asyncronusly sent
     //shortestPath - define as function input
     
     /* create the first prefix [0, 1, ..., prefixLen-1, NOT_SET, ... NOT_SET] */
-    int *nextPrefix = allocate_empty_array_of_int(citiesNum);
+    nextPrefix = allocate_empty_array_of_int(citiesNum);
     for (int i=0 ; i <PREFIX_LEN(citiesNum) ; i++) {
         nextPrefix[i] = i;
     }
 
     /* listen to new bound update and job request asyncronusly */
-    int minPathLenTmp;
-    listen_bound_update_async(&boundRequest, &minPathLenTmp);
+    listen_bound_update_async(&getBoundRequest, &receiveNewBound);
     listen_job_request_async(&jobRequest);
 
     //FIXME: remove
@@ -575,9 +626,8 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 
         begin_c = clock();
 
-        if (test_and_handle_bound_update(&boundRequest, minPathLen,
-                    &minPathLenTmp))
-            listen_bound_update_async(&boundRequest, &minPathLenTmp);
+        test_and_handle_bound_update_master(&getBoundRequest, minPathLen,
+                    &receiveNewBound);
 
         end_c = clock();
         testAndHandleBoundSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
@@ -641,6 +691,29 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
+    int rank, cpuMinPathLen, receiveNewBound, minPathLenLocal, jobTmp;
+    int *sendNewBound, *emptyIntArr, *shortestPathLocal, *cpuShortestPath;
+    bool finishedRoutine;
+    State *state, *nextState;
+    MPI_Status tmpStatus;
+    MPI_Request sendBoundRequest, getBoundRequest, sendNextJobRequest,
+                receiveNextJobRequest;
+
+    /* initiallize variables */
+    finishedRoutine = false;
+    minPathLenLocal = INF;
+    sendNewBound = malloc(sizeof(int)); // set on heap because it is 
+                                        // asyncronusly sent
+    shortestPathLocal = allocate_empty_array_of_int(citiesNum);
+    cpuShortestPath = allocate_empty_array_of_int(citiesNum);
+    emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+    emptyIntArr = allocate_empty_array_of_int(citiesNum);
+    nextState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+
     //FIXME: remove
     double cpuMainSum = 0;
     int cpuMainCounter = 0;
@@ -651,39 +724,18 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     int waitingJobCounter = 0;
 
 
-    int rank;
-    MPI_Status status;
-    MPI_Request broadcastRequest, boundRequest;
-    MPI_Request sendNextJobRequest, receiveNextJobRequest;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    /* allocate states to receive data */
-    int *emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-    emptyIntArr = allocate_empty_array_of_int(citiesNum);
-    State *nextState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-
-    int *minPathLenLocal = malloc(sizeof(int)); // set on heap because it is 
-    *minPathLenLocal = INF;                     // asyncronusly sent
-    int minPathLenTmp, newBound;
-    int *shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-    int *shortestPathTmp = allocate_empty_array_of_int(citiesNum);
 
     /* listen to bound update */
-    MPI_Ibcast(&newBound, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-            &broadcastRequest);
+    listen_bound_update_async(&getBoundRequest, &receiveNewBound);
 
     /* send a job request */
-    int jobTmp;
     MPI_Ssend(&jobTmp, 1, MPI_INT, /*dst=*/0, JOB_REQUEST_TAG, MPI_COMM_WORLD);
 
     /* receive a new job */
     MPI_Recv(state, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
-            &status);
-
+            &tmpStatus);
 
     /* start main worker routine */
-    bool finished = false;
     do {
         
         /* send the next job request asyncronusly meanwhile */
@@ -697,12 +749,9 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         begin_c = clock();
 
         /* run cpu_main on state */
-        if (state->vertex != NOT_SET) {
-            minPathLenTmp = INF;
-            cpu_main(state, citiesNum, agencyMatrix, &minPathLenTmp,
-                    shortestPathTmp);
-        } else
-            finished = true;
+        cpuMinPathLen = INF;
+        cpu_main(state, citiesNum, agencyMatrix, &cpuMinPathLen,
+                    cpuShortestPath);
 
         end_c = clock();
 		cpuMainSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
@@ -711,54 +760,41 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         begin_c = clock();
 
         /* test new bound */
-        int boundArrived = false;
-        int rc = MPI_Test(&broadcastRequest, &boundArrived, &status);
-        assert(rc == MPI_SUCCESS);
-        if (boundArrived) {
-            if (newBound < *minPathLenLocal) {
-                *minPathLenLocal = newBound;
-                free_array_of_int(shortestPathLocal);
-                shortestPathLocal = allocate_empty_array_of_int(citiesNum);
-            }
-            /* renew listening to bound update */
-            MPI_Ibcast(&newBound, 1, MPI_INT, /*root=*/0, MPI_COMM_WORLD,
-                    &broadcastRequest);
-        }
+        test_and_handle_bound_update_worker(&getBoundRequest, &minPathLenLocal,
+                shortestPathLocal, citiesNum, &receiveNewBound);
 
         end_c = clock();
 		testAndHandleBoundReceiveSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
         testAndHandleBoundCounter++;
 
         /* check the result */
-        if (state->vertex != NOT_SET) {
-            /* if we found a better result than the curren one - notify the root */
-            if (minPathLenTmp < *minPathLenLocal) {
-                *minPathLenLocal = minPathLenTmp;
-                copy_array_of_int(shortestPathTmp, shortestPathLocal, citiesNum);
-                MPI_Issend(minPathLenLocal, 1, MPI_INT, /*dst=*/0,
-                        BOUND_TAG, MPI_COMM_WORLD, &boundRequest);
-            }
+        if (cpuMinPathLen < minPathLenLocal) {
+            minPathLenLocal = cpuMinPathLen;
+            copy_array_of_int(cpuShortestPath, shortestPathLocal, citiesNum);
+            notify_all_new_bound(&sendBoundRequest, &minPathLenLocal,
+                    sendNewBound);
         }
 
         //FIXME: remove
 	    begin_c = clock();
 
         /* wait for new state */
-        MPI_Wait(&sendNextJobRequest, &status);
-        MPI_Wait(&receiveNextJobRequest, &status);
-        State *tmp = state;
-        state = nextState;
-        nextState = tmp;
+        MPI_Wait(&sendNextJobRequest, &tmpStatus);
+        MPI_Wait(&receiveNextJobRequest, &tmpStatus);
+        if (nextState->vertex == NOT_SET)
+            finishedRoutine = true;
+        else {
+            State *tmp = state;
+            state = nextState;
+            nextState = tmp;
+        }
 
         //FIXME: remove
 	    end_c = clock();
 		waitingJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
         waitingJobCounter++;
 
-        if (state->vertex == NOT_SET)
-            finished = true;
-
-    } while ( !finished );
+    } while ( !finishedRoutine );
 
     printf("cpu %d : avg cpu_main time = %f\n", rank, cpuMainSum/cpuMainCounter);
     printf("cpu %d : avg testAndHandleBoundReceive time = %f\n",
@@ -778,11 +814,11 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     MPI_Barrier(MPI_COMM_WORLD);
 
     /* free memory */
-    free(minPathLenLocal);
+    //free(sendNewBound); - we won't free it so it can still be sent
     free_state(state);
     free_state(nextState);
     free_array_of_int(shortestPathLocal);
-    free_array_of_int(shortestPathTmp);
+    free_array_of_int(cpuShortestPath);
 }
 
 // The dynamic parellel algorithm main function.
