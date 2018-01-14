@@ -14,15 +14,7 @@
 #define JOB_TAG 101
 #define JOB_REQUEST_TAG 102
 
-//FIXME: chose prefix len
-//#define PREFIX_LEN(citiesNum)   ((citiesNum)-5)
-//#define PREFIX_LEN(citiesNum)   ((citiesNum)-10)
-//#define PREFIX_LEN(citiesNum)   ((citiesNum)-3)
-//#define PREFIX_LEN(citiesNum)   2
-//#define PREFIX_LEN(citiesNum)   3
 #define PREFIX_LEN(citiesNum)   4
-//#define PREFIX_LEN(citiesNum)   5
-//#define PREFIX_LEN(citiesNum)   6
 #define MIN(a, b)   (((a) < (b)) ? (a) : (b))
 
 
@@ -239,15 +231,6 @@ State* create_state(int vertex, int citiesNum, int *shortestPathUntilNow,
     return state;
 }
 
-/* copy src array of states to dst array of states */
-void copy_state(State *src, State *dst, int citiesNum) {
-
-    dst->vertex = src->vertex;
-    dst->cost = src->cost;
-    copy_array_of_int(src->shortestPathUntilNow,
-            dst->shortestPathUntilNow, citiesNum);
-}
-
 /* free the memory allocated for the array.
  * MEM NOTE:
  * do nothing in input is NULL */
@@ -265,24 +248,6 @@ bool is_leaf(State *state, int citiesNum) {
             return false;
     }
     return true;
-}
-
-
-//FIXME: remove
-void print_array_of_int(int *arr, int size) {
-    printf("[");
-    for (int i=0 ; i<size ; i++) {
-        if (i == size-1)
-            printf("%d", arr[i]);
-        else
-            printf("%d, ", arr[i]);
-    }
-    printf("] ");
-}
-void print_state(State *state, int citiesNum) {
-    printf("{%d, %d ", state->vertex, state->cost);
-    print_array_of_int(state->shortestPathUntilNow, citiesNum);
-    printf("} ");
 }
 
 //-----------------------------------------------------------------------------
@@ -303,14 +268,6 @@ int heuristic(State *state, int citiesNum, int **agencyMatrix) {
             i != state->shortestPathUntilNow[0])
             continue;
 
-        ///* find the lightest edge of vertex i */
-        //int lightestEdge = INF;
-        //for (int j=0 ; j<citiesNum ; j++) {
-        //    if (agencyMatrix[i][j] < lightestEdge) {
-        //        lightestEdge = agencyMatrix[i][j];
-        //    }
-        //}
-        //res += lightestEdge;
         res += lightestEdge[i];
     }
     return res;
@@ -546,8 +503,6 @@ bool test_and_handle_job_request(MPI_Request *request, State *nextState,
 int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    printf("master\n");
-
     int numTasks, receiveNewBound, *minPathLen, *nextPrefix;
     int numEmptyStatesSent = 0;
     MPI_Request getBoundRequest, jobRequest;
@@ -568,17 +523,6 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     listen_bound_update_async(&getBoundRequest, &receiveNewBound);
     listen_job_request_async(&jobRequest);
 
-    //FIXME: remove
-    double createStateSum = 0;
-    int createStateCounter = 0;
-    double increasePrefixSum = 0;
-    int increasePrefixCounter = 0;
-    double testAndHandleBoundSum = 0;
-    int testAndHandleBoundCounter = 0;
-    double testAndHandleJobSum = 0;
-    int testAndHandleJobCounter = 0;
-	clock_t begin_c, end_c;
-
     /* start the main routine */
     bool needJob = true;
     State *nextState;
@@ -586,8 +530,6 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 
         /* create the next state - may be an empty state if we finished */
         if (needJob) {
-
-            begin_c = clock();
 
             int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
             copy_array_of_int(nextPrefix, shortestPathUntilNow, citiesNum);
@@ -600,57 +542,24 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
                         citiesNum, shortestPathUntilNow, agencyMatrix);
             }
 
-            end_c = clock();
-            createStateSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-            createStateCounter++;
-
-            begin_c = clock();
-
             increas_prefix(nextPrefix, PREFIX_LEN(citiesNum), citiesNum);
             needJob = false;
-
-            end_c = clock();
-            increasePrefixSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-            increasePrefixCounter++;
         }
 
         /* check if we got new requests, handle it and renew listening */
-        begin_c = clock();
-
         if (test_and_handle_job_request(&jobRequest, nextState, stateTypeName)) {
             listen_job_request_async(&jobRequest);
             needJob = true;
         }
 
-        end_c = clock();
-        testAndHandleJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        testAndHandleJobCounter++;
-
-        begin_c = clock();
-
         test_and_handle_bound_update_master(&getBoundRequest, minPathLen,
                     &receiveNewBound);
-
-        end_c = clock();
-        testAndHandleBoundSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        testAndHandleBoundCounter++;
 
         /* free memory */
         if (needJob)
             free_state(nextState);
 
     }
-
-    printf("root timing : avg create state = %f\n", createStateSum/createStateCounter);
-    printf("root timing : avg increase prefix = %f\n", increasePrefixSum/increasePrefixCounter);
-    printf("root timing : avg test and handle bounds = %f\n",
-            testAndHandleBoundSum/testAndHandleBoundCounter);
-    printf("root timing : avg test and handle job = %f\n",
-            testAndHandleJobSum/testAndHandleJobCounter);
-    printf("root timing : TOTAL create state = %f\n", createStateSum);
-    printf("root timing : TOTAL increase prefix = %f\n", increasePrefixSum);
-    printf("root timing : TOTAL test and handle bounds = %f\n", testAndHandleBoundSum);
-    printf("root timing : TOTAL test and handle job = %f\n", testAndHandleJobSum);
         
     /* wait for all tasks to receive the end messages before exiting */
     MPI_Barrier(MPI_COMM_WORLD);
@@ -693,9 +602,7 @@ int rootExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         int *shortestPath) {
 
-    printf("other\n");
-
-    int rank, cpuMinPathLen, receiveNewBound, minPathLenLocal, jobTmp;
+    int cpuMinPathLen, receiveNewBound, minPathLenLocal, jobTmp;
     int *sendNewBound, *emptyIntArr, *shortestPathLocal, *cpuShortestPath;
     bool finishedRoutine;
     State *state, *nextState;
@@ -714,20 +621,6 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
     state = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
     emptyIntArr = allocate_empty_array_of_int(citiesNum);
     nextState = create_state(NOT_SET, citiesNum, emptyIntArr, agencyMatrix);
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-
-    //FIXME: remove
-    double cpuMainSum = 0;
-    int cpuMainCounter = 0;
-    double testAndHandleBoundReceiveSum = 0;
-    int testAndHandleBoundCounter = 0;
-    clock_t begin_c, end_c;
-    double waitingJobSum = 0;
-    int waitingJobCounter = 0;
-
-
 
     /* listen to bound update */
     listen_bound_update_async(&getBoundRequest, &receiveNewBound);
@@ -750,27 +643,14 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
         MPI_Irecv(nextState, 1, stateTypeName, /*src=*/0, JOB_TAG, MPI_COMM_WORLD,
                 &receiveNextJobRequest);
 
-        begin_c = clock();
-
         /* run cpu_main on state */
         cpuMinPathLen = minPathLenLocal;
-        //cpuMinPathLen = INF;
         cpu_main(state, citiesNum, agencyMatrix, &cpuMinPathLen,
                     cpuShortestPath, &getBoundRequest, &receiveNewBound);
-
-        end_c = clock();
-		cpuMainSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        cpuMainCounter++;
-
-        begin_c = clock();
 
         /* test new bound */
         test_and_handle_bound_update_worker(&getBoundRequest, &minPathLenLocal,
                 shortestPathLocal, citiesNum, &receiveNewBound);
-
-        end_c = clock();
-		testAndHandleBoundReceiveSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        testAndHandleBoundCounter++;
 
         /* check the result */
         if (cpuMinPathLen < minPathLenLocal) {
@@ -779,9 +659,6 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
             notify_all_new_bound(&sendBoundRequest, &minPathLenLocal,
                     sendNewBound);
         }
-
-        //FIXME: remove
-	    begin_c = clock();
 
         /* wait for new state */
         MPI_Wait(&sendNextJobRequest, &tmpStatus);
@@ -794,22 +671,7 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
             nextState = tmp;
         }
 
-        //FIXME: remove
-	    end_c = clock();
-		waitingJobSum += (double)(end_c - begin_c) / CLOCKS_PER_SEC;
-        waitingJobCounter++;
-
     } while ( !finishedRoutine );
-
-    printf("cpu %d : avg cpu_main time = %f\n", rank, cpuMainSum/cpuMainCounter);
-    printf("cpu %d : avg testAndHandleBoundReceive time = %f\n",
-            rank, testAndHandleBoundReceiveSum/testAndHandleBoundCounter);
-    printf("cpu %d : avg waiting for job time = %f\n", rank, waitingJobSum/waitingJobCounter);
-    printf("cpu %d : TOTAL cpu_main time = %f\n", rank, cpuMainSum);
-    printf("cpu %d : TOTAL testAndHandleBoundReceive time = %f\n",
-            rank, testAndHandleBoundReceiveSum);
-    printf("cpu %d : TOTAL waiting for job time = %f\n", rank, waitingJobSum);
-
 
     /* send the result to root task */
     MPI_Gather(shortestPathLocal, citiesNum, MPI_INT, NULL, citiesNum, MPI_INT,
@@ -829,7 +691,7 @@ void otherExec(int citiesNum, int **agencyMatrix, MPI_Datatype stateTypeName,
 // The dynamic parellel algorithm main function.
 int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 {
-    int numTasks, rank/*, rc*/;
+    int numTasks, rank;
     MPI_Datatype stateTypeName;
 
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
@@ -882,336 +744,4 @@ int tsp_main(int citiesNum, int xCoord[], int yCoord[], int shortestPath[])
 
     return minPathLen;
 }
-
-
-
-//int main() {
-//
-//
-//    /* are_equal_array_of_int test */
-//    int a1[] = {1, 2, 3, 5};
-//    int a2[] = {1, 2, 3, 5};
-//    assert(are_equal_array_of_int(a1, a2, 4));
-//    int a3[] = {0, 2, 3, 5};
-//    assert(!are_equal_array_of_int(a1, a3, 4));
-//
-//
-//
-//
-//    /* increas_prefix test */
-//    int prefixLen = 4;
-//    int citiesNum = 4;
-//
-//    int *prefix = allocate_empty_array_of_int(prefixLen);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    int tmp[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
-//    assert(are_equal_array_of_int(prefix, tmp, citiesNum));
-//
-//    for(int i=0 ; i<prefixLen ; i++) {
-//        prefix[i] = i;
-//    }
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 2);
-//    assert(prefix[3] == 3);
-//
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 3);
-//    assert(prefix[3] == 2);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 2);
-//    assert(prefix[2] == 1);
-//    assert(prefix[3] == 3);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 2);
-//    assert(prefix[2] == 3);
-//    assert(prefix[3] == 1);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 3);
-//    assert(prefix[2] == 1);
-//    assert(prefix[3] == 2);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 3);
-//    assert(prefix[2] == 2);
-//    assert(prefix[3] == 1);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == NOT_SET);
-//    assert(prefix[1] == NOT_SET);
-//    assert(prefix[2] == NOT_SET);
-//    assert(prefix[3] == NOT_SET);
-//
-//    prefix[0] = 0;
-//    prefix[1] = 1;
-//    prefix[2] = 2;
-//    prefix[3] = 3;
-//
-//    citiesNum = 6;
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 2);
-//    assert(prefix[3] == 4);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 2);
-//    assert(prefix[3] == 5);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 3);
-//    assert(prefix[3] == 2);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 3);
-//    assert(prefix[3] == 4);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 3);
-//    assert(prefix[3] == 5);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 4);
-//    assert(prefix[3] == 2);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 4);
-//    assert(prefix[3] == 3);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 4);
-//    assert(prefix[3] == 5);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 5);
-//    assert(prefix[3] == 2);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 5);
-//    assert(prefix[3] == 3);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 1);
-//    assert(prefix[2] == 5);
-//    assert(prefix[3] == 4);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 2);
-//    assert(prefix[2] == 1);
-//    assert(prefix[3] == 3);
-//    increas_prefix(prefix, prefixLen, citiesNum);
-//    assert(prefix[0] == 0);
-//    assert(prefix[1] == 2);
-//    assert(prefix[2] == 1);
-//    assert(prefix[3] == 4);
-//
-//    free_array_of_int(prefix);
-//
-//
-//
-//
-//
-//    ////FIXME: do i need this?
-//    ///* init_array_of_states test */
-//    //int numTasks = 8;
-//    //int citiesNum = 6;
-//    //int xCoord[] = {0, 1, 2, 3, 4, 5};
-//    //int yCoord[] = {0, 0, 0, 0, 0, 0};
-//    //int **agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-//    //void *statesArr = allocate_array_of_states(numTasks, citiesNum, agencyMatrix);
-//    //int *nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
-//    //        /*prefixLen=*/4, agencyMatrix);
-//    //int requestedRes[] = {0, 1, 4, 3};
-//    //assert(are_equal_array_of_int(nextPrefix, requestedRes, /*prefixLen=*/4));
-//    //free_array_of_int(nextPrefix);
-//
-//    //int *shortestPathUntilNow = allocate_empty_array_of_int(citiesNum);
-//    //shortestPathUntilNow[0];
-//    //State *state = create_state(0, citiesNum, shortestPathUntilNow, agencyMatrix);
-//    //
-//    //copy_state_from_array_of_states(statesArr, 0, citiesNum, state);
-//    //assert(state->vertex == NOT_SET);
-//    //assert(state->cost == 0);
-//    //assert(state->shortestPathUntilNow[0] == NOT_SET);
-//    //assert(state->shortestPathUntilNow[1] == NOT_SET);
-//    //assert(state->shortestPathUntilNow[2] == NOT_SET);
-//    //assert(state->shortestPathUntilNow[3] == NOT_SET);
-//
-//    //copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
-//    //assert(state->vertex == 3);
-//    //assert(state->cost == 9);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 1);
-//    //assert(state->shortestPathUntilNow[2] == 2);
-//    //assert(state->shortestPathUntilNow[3] == 3);
-//
-//    //copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
-//    //assert(state->vertex == 4);
-//    //assert(state->cost == 11);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 1);
-//    //assert(state->shortestPathUntilNow[2] == 2);
-//    //assert(state->shortestPathUntilNow[3] == 4);
-//    //
-//    //copy_state_from_array_of_states(statesArr, 7, citiesNum, state);
-//    //assert(state->vertex == 2);
-//    //assert(state->cost == 15);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 1);
-//    //assert(state->shortestPathUntilNow[2] == 4);
-//    //assert(state->shortestPathUntilNow[3] == 2);
-//
-//    //free_agency_matrix(agencyMatrix, citiesNum);
-//
-//    //citiesNum = 4;
-//    //numTasks = 7;
-//    //agencyMatrix = create_agency_matrix(xCoord, yCoord, citiesNum);
-//    //nextPrefix = init_array_of_states(statesArr, numTasks, citiesNum,
-//    //        /*prefixLen=*/4, agencyMatrix);
-//    //int requestedRes2[] = {1, 0, 2, 3};
-//    //assert(are_equal_array_of_int(nextPrefix, requestedRes2, /*prefixLen=*/4));
-//    //free_array_of_int(nextPrefix);
-//
-//    //copy_state_from_array_of_states(statesArr, 1, citiesNum, state);
-//    //assert(state->vertex == 3);
-//    //assert(state->cost == 9);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 1);
-//    //assert(state->shortestPathUntilNow[2] == 2);
-//    //assert(state->shortestPathUntilNow[3] == 3);
-//
-//    //copy_state_from_array_of_states(statesArr, 2, citiesNum, state);
-//    //assert(state->vertex == 2);
-//    //assert(state->cost == 11);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 1);
-//    //assert(state->shortestPathUntilNow[2] == 3);
-//    //assert(state->shortestPathUntilNow[3] == 2);
-//
-//    //copy_state_from_array_of_states(statesArr, 3, citiesNum, state);
-//    //assert(state->vertex == 3);
-//    //assert(state->cost == 13);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 2);
-//    //assert(state->shortestPathUntilNow[2] == 1);
-//    //assert(state->shortestPathUntilNow[3] == 3);
-//
-//    //copy_state_from_array_of_states(statesArr, 4, citiesNum, state);
-//    //assert(state->vertex == 1);
-//    //assert(state->cost == 13);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 2);
-//    //assert(state->shortestPathUntilNow[2] == 3);
-//    //assert(state->shortestPathUntilNow[3] == 1);
-//
-//    //copy_state_from_array_of_states(statesArr, 5, citiesNum, state);
-//    //assert(state->vertex == 2);
-//    //assert(state->cost == 15);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 3);
-//    //assert(state->shortestPathUntilNow[2] == 1);
-//    //assert(state->shortestPathUntilNow[3] == 2);
-//
-//    //copy_state_from_array_of_states(statesArr, 6, citiesNum, state);
-//    //assert(state->vertex == 1);
-//    //assert(state->cost == 13);
-//    //assert(state->shortestPathUntilNow[0] == 0);
-//    //assert(state->shortestPathUntilNow[1] == 3);
-//    //assert(state->shortestPathUntilNow[2] == 2);
-//    //assert(state->shortestPathUntilNow[3] == 1);
-//
-//    //free_state(state);
-//    //free_array_of_states(statesArr);
-//    //free_agency_matrix(agencyMatrix, citiesNum);
-//
-//
-//
-//
-//
-//
-//
-//    //FIXME: do i need it ?
-//    ///* init_array_of_prefixes test */
-//    //int numTasks = 8;
-//    //prefixLen = 4;
-//    //citiesNum = 6;
-//    //int xCoord[] = {0, 1, 2, 3, 4, 5};
-//    //int yCoord[] = {0, 0, 0, 0, 0, 0};
-//    //int *prefixesArr = allocate_array_of_prefixes(numTasks, citiesNum);
-//
-//    //int *nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
-//    //        prefixLen);
-//    //int requestedNextPrefix0[] = {0, 1, 4, 3};
-//    //assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix0, prefixLen));
-//    //free_array_of_int(nextPrefix);
-//
-//    //int rs0[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
-//    //assert(are_equal_array_of_int(prefixesArr, rs0, prefixLen));
-//
-//    //int rs1[] = {0, 1, 2, 3};
-//    //assert(are_equal_array_of_int(prefixesArr + prefixLen, rs1, prefixLen));
-//
-//    //int rs2[] = {0, 1, 2, 4};
-//    //assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs2, prefixLen));
-//
-//    //int rs7[] = {0, 1, 4, 2};
-//    //assert(are_equal_array_of_int(prefixesArr + 7*prefixLen, rs7, prefixLen));
-//
-//
-//    //citiesNum = 4;
-//    //numTasks = 7;
-//    //nextPrefix = init_array_of_prefixes(prefixesArr, numTasks, citiesNum,
-//    //        prefixLen);
-//    //int requestedNextPrefix1[] = {1, 0, 2, 3};
-//    //assert(are_equal_array_of_int(nextPrefix, requestedNextPrefix1, prefixLen));
-//    //free_array_of_int(nextPrefix);
-//
-//    //int rs00[] = {NOT_SET, NOT_SET, NOT_SET, NOT_SET};
-//    //assert(are_equal_array_of_int(prefixesArr, rs00, prefixLen));
-//
-//    //int rs01[] = {0, 1, 2, 3};
-//    //assert(are_equal_array_of_int(prefixesArr + prefixLen, rs01, prefixLen));
-//
-//    //int rs02[] = {0, 1, 3, 2};
-//    //assert(are_equal_array_of_int(prefixesArr + 2*prefixLen, rs02, prefixLen));
-//
-//    //int rs03[] = {0, 2, 1, 3};
-//    //assert(are_equal_array_of_int(prefixesArr + 3*prefixLen, rs03, prefixLen));
-//
-//    //int rs04[] = {0, 2, 3, 1};
-//    //assert(are_equal_array_of_int(prefixesArr + 4*prefixLen, rs04, prefixLen));
-//
-//    //int rs05[] = {0, 3, 1, 2};
-//    //assert(are_equal_array_of_int(prefixesArr + 5*prefixLen, rs05, prefixLen));
-//
-//    //int rs06[] = {0, 3, 2, 1};
-//    //assert(are_equal_array_of_int(prefixesArr + 6*prefixLen, rs06, prefixLen));
-//
-//    //free_array_of_prefixes(prefixesArr);
-//}
-
-
-
-
-
-
-
-
-
-
-
-
 
