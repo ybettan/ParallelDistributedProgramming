@@ -4,8 +4,10 @@ import java.util.StringTokenizer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 
 import org.apache.hadoop.mapreduce.Job;
@@ -38,7 +40,11 @@ import org.apache.hadoop.fs.FileSystem;
  * (p$n$pk, count) --> (count/n, p$pk)
  *
  * phase3 reduce:
- * (count/n, p$pk) --> (p  pk  count/n, none) 
+ * (count/n, [p$pk1, p$pk2, ...,p$pkn) --> (p  pk1  count/n, none) 
+ *                                         (p  pk2  count/n, none) 
+ *                                         ...
+ *                                         (p  pkn  count/n, none) 
+ *
  * NOTE: does it only for the k first element (using a static array\counter)
  *
  * */
@@ -144,14 +150,60 @@ public class Solution {
             }
     } 
 
-
-
     //-------------------------------------------------------------------------
     //                              Phase 3
     //-------------------------------------------------------------------------
 
+    public static class FreqMapper extends
+        Mapper<Text, Text, DoubleWritable, Text> {
 
+            private static String newValStr = new String();
+            private static DoubleWritable newKey = new DoubleWritable();
+            private static Text newVal = new Text();
 
+            public void map(Text key, Text val, Context context)
+                throws IOException, InterruptedException {
+
+                StringTokenizer st = new StringTokenizer(key.toString());
+                int numOccurences;
+
+                String tmp = new String();
+                tmp = val.toString();
+                double newKeyDouble  = Double.parseDouble(tmp);
+
+                newValStr = st.nextToken("$") + "$";
+                numOccurences = Integer.parseInt(st.nextToken("$"));
+                newValStr += st.nextToken();
+
+                newKey.set(newKeyDouble / numOccurences);
+                newVal.set(newValStr);
+                context.write(newKey, newVal);
+            }
+    }
+
+    public static class ArrangeReducer extends
+        Reducer<DoubleWritable, Text, Text, NullWritable> {
+
+            private Text newKey = new Text();
+            private String newKeyStr = new String();
+            private final static NullWritable nothing = NullWritable.get();
+
+            public void reduce(DoubleWritable key, Iterable<Text> vals, Context context)
+                throws IOException, InterruptedException {
+
+                StringTokenizer st;
+
+                for (Text val : vals) {
+                    st = new StringTokenizer(val.toString());
+                    newKeyStr = st.nextToken("$") + "\t" + st.nextToken();
+                    newKeyStr += "\t" + Double.toString(key.get());
+
+                    newKey.set(newKeyStr);
+                    context.write(newKey, nothing);
+                }
+
+            }
+    } 
 
     //-------------------------------------------------------------------------
     //                               Main
@@ -172,6 +224,7 @@ public class Solution {
         /* Just to be safe: clean temporary files before we begin */
         fs.delete(TEMP_PATH_12, true);
         fs.delete(TEMP_PATH_23, true);
+        fs.delete(OUTPUT_PATH, true);
 
         /* We chain the 3 Mapreduce phases using a temporary directory
          * from which the first phase writes to, and the second reads from.
@@ -213,28 +266,24 @@ public class Solution {
         /* Clean temporary files from the previous MapReduce phase */
         fs.delete(TEMP_PATH_12, true);
 
-        ///* Setup second MapReduce phase */
-        //Job job2 = Job.getInstance(conf, "Ex4-second");
-        //job2.setJarByClass(Solution.class);
-        //job2.setMapperClass(CountMapper.class);
-        //job2.setReducerClass(CountReducer.class);
-        //job2.setMapOutputKeyClass(Text.class);
-        //job2.setMapOutputValueClass(IntWritable.class);
-        //job2.setOutputKeyClass(Text.class);
-        //job2.setOutputValueClass(NullWritable.class);
-        //job2.setInputFormatClass(KeyValueTextInputFormat.class);
-        //FileInputFormat.addInputPath(job2, TEMP_PATH);
-        //FileOutputFormat.setOutputPath(job2, new Path(args[1]));
-        //
-        //boolean status2 = job2.waitForCompletion(true);
-        //
-        ///* Clean temporary files from the first MapReduce phase */
-        //fs.delete(TEMP_PATH, true);
-
-        //if (!status2) System.exit(1);
+        /* Setup third MapReduce phase */
+        Job job3 = Job.getInstance(conf, "Ex4-third");
+        job3.setJarByClass(Solution.class);
+        job3.setMapperClass(FreqMapper.class);
+        job3.setReducerClass(ArrangeReducer.class);
+        job3.setMapOutputKeyClass(DoubleWritable.class);
+        job3.setMapOutputValueClass(Text.class);
+        job3.setOutputKeyClass(Text.class);
+        job3.setOutputValueClass(NullWritable.class);
+        job3.setInputFormatClass(KeyValueTextInputFormat.class);
+        FileInputFormat.addInputPath(job3, TEMP_PATH_23);
+        FileOutputFormat.setOutputPath(job3, OUTPUT_PATH);
         
-        ///* Clean temporary files from the first MapReduce phase */
-        //fs.delete(TEMP_PATH, true);
+        boolean status3 = job3.waitForCompletion(true);
+        if (!status3) System.exit(1);
+        
+        /* Clean temporary files from the first MapReduce phase */
+        fs.delete(TEMP_PATH_23, true);
 
     }
 }
