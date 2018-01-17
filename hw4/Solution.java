@@ -34,8 +34,9 @@ public class Solution {
     private static final Path INPUT_PATH = new Path(args[1]);
     private static final Path OUTPUT_PATH = new Path(args[2]);
     
-    private static final Path INTER12_PATH = new Path("inter12");
-    private static final Path INTER23_PATH = new Path("inter23");
+    private static final Path TEMP_PATH = new Path("temp");
+    //private static final Path INTER12_PATH = new Path("inter12");
+    //private static final Path INTER23_PATH = new Path("inter23");
 
     //-------------------------------------------------------------------------
     //                              Phase 1
@@ -100,9 +101,53 @@ public class Solution {
      * @args[2] - outputPath to the result */
     public static void main(String[] args) throws Exception {
         
-        System.out.println("args[0] = " + args[0]);
-        System.out.println("args[1] = " + args[1]);
-        System.out.println("args[2] = " + args[2]);
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(conf);
+
+        /* Just to be safe: clean temporary files before we begin */
+        fs.delete(TEMP_PATH, true);
+
+        /* We chain the 3 Mapreduce phases using a temporary directory
+         * from which the first phase writes to, and the second reads from.
+         * then the second writes to and the third read from */
+
+        /* Setup first MapReduce phase */
+        Job job1 = Job.getInstance(conf, "Ex4-first");
+        job1.setJarByClass(Solution.class);
+        job1.setMapperClass(TokenizerMapper.class);
+        job1.setReducerClass(IntSumReducer.class);
+        job1.setMapOutputKeyClass(Text.class);
+        job1.setMapOutputValueClass(IntWritable.class);
+        job1.setOutputKeyClass(Text.class);
+        job1.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job1, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job1, TEMP_PATH);
+
+        boolean status1 = job1.waitForCompletion(true);
+        if(!status1) {
+            System.exit(1);
+        }
+
+        ///* Setup second MapReduce phase */
+        //Job job2 = Job.getInstance(conf, "WordOrder-second");
+        //job2.setJarByClass(WordOrder.class);
+        //job2.setMapperClass(SwapMapper.class);
+        //job2.setReducerClass(OutputReducer.class);
+        //job2.setMapOutputKeyClass(IntWritable.class);
+        //job2.setMapOutputValueClass(Text.class);
+        //job2.setOutputKeyClass(Text.class);
+        //job2.setOutputValueClass(NullWritable.class);
+        //job2.setInputFormatClass(KeyValueTextInputFormat.class);
+        //FileInputFormat.addInputPath(job2, TEMP_PATH);
+        //FileOutputFormat.setOutputPath(job2, new Path(args[1]));
+        //
+        //boolean status2 = job2.waitForCompletion(true);
+        //
+        ///* Clean temporary files from the first MapReduce phase */
+        //fs.delete(TEMP_PATH, true);
+
+        //if (!status2) System.exit(1);
+
     }
 }
 
