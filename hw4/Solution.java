@@ -45,10 +45,12 @@ import org.apache.hadoop.fs.FileSystem;
 
 public class Solution {
 
+    private static int k;
     private static Path INPUT_PATH;
     private static Path OUTPUT_PATH;
     
-    private static final Path TEMP_PATH = new Path("temp");
+    private static final Path TEMP_PATH_12 = new Path("temp12");
+    private static final Path TEMP_PATH_23 = new Path("temp23");
 
     //-------------------------------------------------------------------------
     //                              Phase 1
@@ -95,39 +97,52 @@ public class Solution {
     //                              Phase 2
     //-------------------------------------------------------------------------
 
-    //public static class DuplicateMapper extends
-    //    Mapper<LongWritable, Text, Text, IntWritable> {
+    public static class CountMapper extends
+        Mapper<Text, Text, Text, IntWritable> {
 
-    //        private final static IntWritable one = new IntWritable(1);
-    //        private final Text twoProd = new Text();
+            private final static IntWritable one = new IntWritable(1);
+            private static Text newKey = new Text();
+            private static String newKeyStr = new String();
 
-    //        public void map(LongWritable key, Text val, Context context)
-    //            throws IOException, InterruptedException {
+            public void map(Text key, Text val, Context context)
+                throws IOException, InterruptedException {
 
-    //            StringTokenizer st =
-    //                new StringTokenizer(val.toString().toLowerCase());
-    //            twoProd.set(st.nextToken(",") + " $ " + st.nextToken());
-    //            context.write(twoProd, one);
-    //        }
-    //}
+                StringTokenizer st = new StringTokenizer(val.toString());
+                int numOfOtherProducts = 0;
 
-    //public static class ConcatReducer extends
-    //    Reducer<Text, IntWritable, Text, IntWritable> {
+                /* count the number of products that were selled with the key */
+                for (int i=0 ; i<val.toString().length() ; i++) {
+                    if (val.toString().charAt(i) == '$')
+                        numOfOtherProducts++;
+                }
+                numOfOtherProducts++;
 
-    //        private final IntWritable result = new IntWritable();
+                while (st.hasMoreTokens()) {
+                    newKeyStr = key.toString() + "$" + (numOfOtherProducts) +
+                        "$" + st.nextToken("$");
+                    newKey.set(newKeyStr);
+                    context.write(newKey, one);
+                }
+            }
+    }
 
-    //        public void reduce(Text key, Iterable<IntWritable> vals, Context context)
-    //            throws IOException, InterruptedException {
+    public static class CountReducer extends
+        Reducer<Text, IntWritable, Text, IntWritable> {
 
-    //            int sum = 0;
-    //            for (IntWritable val : vals) {
-    //                sum += val.get();
-    //            }
-    //            result.set(sum);
-    //            context.write(key, result);
-    //        }
+            private final IntWritable result = new IntWritable();
 
-    //} 
+            public void reduce(Text key, Iterable<IntWritable> vals, Context context)
+                throws IOException, InterruptedException {
+
+                int sum = 0;
+                for (IntWritable val : vals) {
+                    sum += val.get();
+                }
+
+                result.set(sum);
+                context.write(key, result);
+            }
+    } 
 
 
 
@@ -147,7 +162,7 @@ public class Solution {
      * @args[2] - outputPath to the result */
     public static void main(String[] args) throws Exception {
 
-        final int K = Integer.parseInt(args[0]);
+        k = Integer.parseInt(args[0]);
         INPUT_PATH = new Path(args[1]);
         OUTPUT_PATH = new Path(args[2]);
         
@@ -155,7 +170,8 @@ public class Solution {
         FileSystem fs = FileSystem.get(conf);
 
         /* Just to be safe: clean temporary files before we begin */
-        fs.delete(TEMP_PATH, true);
+        fs.delete(TEMP_PATH_12, true);
+        fs.delete(TEMP_PATH_23, true);
 
         /* We chain the 3 Mapreduce phases using a temporary directory
          * from which the first phase writes to, and the second reads from.
@@ -171,20 +187,39 @@ public class Solution {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         FileInputFormat.addInputPath(job1, INPUT_PATH);
-        FileOutputFormat.setOutputPath(job1, TEMP_PATH);
+        FileOutputFormat.setOutputPath(job1, TEMP_PATH_12);
 
         boolean status1 = job1.waitForCompletion(true);
         if(!status1) {
             System.exit(1);
         }
 
+        /* Setup second MapReduce phase */
+        Job job2 = Job.getInstance(conf, "Ex4-second");
+        job2.setJarByClass(Solution.class);
+        job2.setMapperClass(CountMapper.class);
+        job2.setReducerClass(CountReducer.class);
+        job2.setMapOutputKeyClass(Text.class);
+        job2.setMapOutputValueClass(IntWritable.class);
+        job2.setOutputKeyClass(Text.class);
+        job2.setOutputValueClass(IntWritable.class);
+        job2.setInputFormatClass(KeyValueTextInputFormat.class);
+        FileInputFormat.addInputPath(job2, TEMP_PATH_12);
+        FileOutputFormat.setOutputPath(job2, TEMP_PATH_23);
+        
+        boolean status2 = job2.waitForCompletion(true);
+        if (!status2) System.exit(1);
+
+        /* Clean temporary files from the previous MapReduce phase */
+        fs.delete(TEMP_PATH_12, true);
+
         ///* Setup second MapReduce phase */
-        //Job job2 = Job.getInstance(conf, "WordOrder-second");
-        //job2.setJarByClass(WordOrder.class);
-        //job2.setMapperClass(SwapMapper.class);
-        //job2.setReducerClass(OutputReducer.class);
-        //job2.setMapOutputKeyClass(IntWritable.class);
-        //job2.setMapOutputValueClass(Text.class);
+        //Job job2 = Job.getInstance(conf, "Ex4-second");
+        //job2.setJarByClass(Solution.class);
+        //job2.setMapperClass(CountMapper.class);
+        //job2.setReducerClass(CountReducer.class);
+        //job2.setMapOutputKeyClass(Text.class);
+        //job2.setMapOutputValueClass(IntWritable.class);
         //job2.setOutputKeyClass(Text.class);
         //job2.setOutputValueClass(NullWritable.class);
         //job2.setInputFormatClass(KeyValueTextInputFormat.class);
@@ -197,6 +232,9 @@ public class Solution {
         //fs.delete(TEMP_PATH, true);
 
         //if (!status2) System.exit(1);
+        
+        ///* Clean temporary files from the first MapReduce phase */
+        //fs.delete(TEMP_PATH, true);
 
     }
 }
