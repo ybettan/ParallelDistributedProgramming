@@ -65,8 +65,8 @@ public class Solution {
     public static class DuplicateMapper extends
         Mapper<LongWritable, Text, Text, Text> {
 
-            private final Text prod1 = new Text();
-            private final Text prod2 = new Text();
+            private static final Text prod1 = new Text();
+            private static final Text prod2 = new Text();
 
             public void map(LongWritable key, Text val, Context context)
                 throws IOException, InterruptedException {
@@ -83,7 +83,7 @@ public class Solution {
     public static class ConcatReducer extends
         Reducer<Text, Text, Text, Text> {
 
-            private Text result = new Text();
+            private static Text result = new Text();
 
             public void reduce(Text key, Iterable<Text> vals, Context context)
                 throws IOException, InterruptedException {
@@ -108,11 +108,11 @@ public class Solution {
 
             private final static IntWritable one = new IntWritable(1);
             private static Text newKey = new Text();
-            private static String newKeyStr = new String();
 
             public void map(Text key, Text val, Context context)
                 throws IOException, InterruptedException {
 
+                String newKeyStr = new String();
                 StringTokenizer st = new StringTokenizer(val.toString());
                 int numOfOtherProducts = 0;
 
@@ -135,7 +135,7 @@ public class Solution {
     public static class CountReducer extends
         Reducer<Text, IntWritable, Text, IntWritable> {
 
-            private final IntWritable result = new IntWritable();
+            private static IntWritable result = new IntWritable();
 
             public void reduce(Text key, Iterable<IntWritable> vals, Context context)
                 throws IOException, InterruptedException {
@@ -158,13 +158,12 @@ public class Solution {
         Mapper<Text, Text, Text, NullWritable> {
 
             private static Text newKey = new Text();
-
-            private static String newKeyStr = new String();
             private final static NullWritable nothing = NullWritable.get();
 
             public void map(Text key, Text val, Context context)
                 throws IOException, InterruptedException {
 
+                String newKeyStr = new String();
                 StringTokenizer st = new StringTokenizer(key.toString());
                 int numOccurences;
 
