@@ -7,7 +7,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 
 import org.apache.hadoop.mapreduce.Job;
@@ -37,14 +36,13 @@ import org.apache.hadoop.fs.FileSystem;
  * (p$n$pk, [1, 1, ..., 1]) --> (p$n$pk, count)
  *
  * phase3 map:
- * (p$n$pk, count) --> (count/n, p$pk)
+ * (p$n$pk, count) --> (p$(1-count/n)$pk, none)
+ * NOTE: the (1-frequence) is for enabling sorting in DECREASING order of the 
+ *       frequency instead of INCREADING order because for 0.* numbers 
+ *       lexicographic sort and value sort are the same.
  *
  * phase3 reduce:
- * (count/n, [p$pk1, p$pk2, ...,p$pkn) --> (p  pk1  count/n, none) 
- *                                         (p  pk2  count/n, none) 
- *                                         ...
- *                                         (p  pkn  count/n, none) 
- *
+ * (p$(1-count/n)$pk, [none, none, ..., none]) --> (p  pk  (count/n), none)
  * NOTE: does it only for the k first element (using a static array\counter)
  *
  * */
@@ -57,6 +55,8 @@ public class Solution {
     
     private static final Path TEMP_PATH_12 = new Path("temp12");
     private static final Path TEMP_PATH_23 = new Path("temp23");
+
+    private static final double THRESHOLD = 0.025;
 
     //-------------------------------------------------------------------------
     //                              Phase 1
@@ -154,12 +154,13 @@ public class Solution {
     //                              Phase 3
     //-------------------------------------------------------------------------
 
-    public static class FreqMapper extends
-        Mapper<Text, Text, DoubleWritable, Text> {
+    public static class ReverseFreqMapper extends
+        Mapper<Text, Text, Text, NullWritable> {
 
-            private static String newValStr = new String();
-            private static DoubleWritable newKey = new DoubleWritable();
-            private static Text newVal = new Text();
+            private static Text newKey = new Text();
+
+            private static String newKeyStr = new String();
+            private final static NullWritable nothing = NullWritable.get();
 
             public void map(Text key, Text val, Context context)
                 throws IOException, InterruptedException {
@@ -167,41 +168,58 @@ public class Solution {
                 StringTokenizer st = new StringTokenizer(key.toString());
                 int numOccurences;
 
-                String tmp = new String();
-                tmp = val.toString();
-                double newKeyDouble  = Double.parseDouble(tmp);
+                double pairOccurences  = Double.parseDouble(val.toString());
 
-                newValStr = st.nextToken("$") + "$";
-                numOccurences = Integer.parseInt(st.nextToken("$"));
-                newValStr += st.nextToken();
+                newKeyStr = st.nextToken("$") + "$";
 
-                newKey.set(newKeyDouble / numOccurences);
-                newVal.set(newValStr);
-                context.write(newKey, newVal);
+                int prodOccurences = Integer.parseInt(st.nextToken("$"));
+                double reversedFreq = 1 - (pairOccurences / prodOccurences);
+                String reversedFreqStr = String.valueOf(reversedFreq);
+
+                newKeyStr += reversedFreqStr + "$";
+                newKeyStr += st.nextToken();
+
+                /* check threshold */
+                if (1-reversedFreq >= THRESHOLD) {
+                    newKey.set(newKeyStr);
+                    context.write(newKey, nothing);
+                }
             }
     }
 
     public static class ArrangeReducer extends
-        Reducer<DoubleWritable, Text, Text, NullWritable> {
+        Reducer<Text, NullWritable, Text, NullWritable> {
 
-            private Text newKey = new Text();
-            private String newKeyStr = new String();
+            private static Text newKey = new Text();
             private final static NullWritable nothing = NullWritable.get();
 
-            public void reduce(DoubleWritable key, Iterable<Text> vals, Context context)
+            /* keep only the K most relevant product */
+            private static int counter = 1;
+            private static String lastProd;
+
+            public void reduce(Text key, Iterable<NullWritable> vals, Context context)
                 throws IOException, InterruptedException {
 
-                StringTokenizer st;
+                StringTokenizer st = new StringTokenizer(key.toString());
+                String prod = new String(st.nextToken("$"));
 
-                for (Text val : vals) {
-                    st = new StringTokenizer(val.toString());
-                    newKeyStr = st.nextToken("$") + "\t" + st.nextToken();
-                    newKeyStr += "\t" + Double.toString(key.get());
+                String newKeyStr = new String(prod + "\t");
+                double reversedFreq = Double.parseDouble(st.nextToken("$"));
+                newKeyStr += st.nextToken() + "\t";
 
-                    newKey.set(newKeyStr);
-                    context.write(newKey, nothing);
+                String freqStr = new String(Double.toString(1-reversedFreq));
+                newKeyStr += freqStr;
+
+                if ( !prod.equals(lastProd) ) {
+                    counter = 1;
                 }
 
+                if (counter <= k) {
+                    newKey.set(newKeyStr);
+                    context.write(newKey, nothing);
+                    counter++;
+                    lastProd = prod;
+                }
             }
     } 
 
@@ -261,7 +279,9 @@ public class Solution {
         FileOutputFormat.setOutputPath(job2, TEMP_PATH_23);
         
         boolean status2 = job2.waitForCompletion(true);
-        if (!status2) System.exit(1);
+        if (!status2) {
+            System.exit(1);
+        }
 
         /* Clean temporary files from the previous MapReduce phase */
         fs.delete(TEMP_PATH_12, true);
@@ -269,22 +289,24 @@ public class Solution {
         /* Setup third MapReduce phase */
         Job job3 = Job.getInstance(conf, "Ex4-third");
         job3.setJarByClass(Solution.class);
-        job3.setMapperClass(FreqMapper.class);
+        job3.setMapperClass(ReverseFreqMapper.class);
         job3.setReducerClass(ArrangeReducer.class);
-        job3.setMapOutputKeyClass(DoubleWritable.class);
-        job3.setMapOutputValueClass(Text.class);
+        job3.setMapOutputKeyClass(Text.class);
+        job3.setMapOutputValueClass(NullWritable.class);
         job3.setOutputKeyClass(Text.class);
         job3.setOutputValueClass(NullWritable.class);
         job3.setInputFormatClass(KeyValueTextInputFormat.class);
         FileInputFormat.addInputPath(job3, TEMP_PATH_23);
         FileOutputFormat.setOutputPath(job3, OUTPUT_PATH);
-        
+
         boolean status3 = job3.waitForCompletion(true);
-        if (!status3) System.exit(1);
-        
+
         /* Clean temporary files from the first MapReduce phase */
         fs.delete(TEMP_PATH_23, true);
 
+        if (!status3) {
+            System.exit(1);
+        }
     }
 }
 
