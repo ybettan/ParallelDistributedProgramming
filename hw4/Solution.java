@@ -1,5 +1,9 @@
 import java.io.IOException;
 import java.util.StringTokenizer;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import java.math.RoundingMode;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -206,7 +210,11 @@ public class Solution {
                 double reversedFreq = Double.parseDouble(st.nextToken("$"));
                 newKeyStr += st.nextToken() + "\t";
 
-                String freqStr = new String(Double.toString(1-reversedFreq));
+                DecimalFormat formatter = new DecimalFormat("#.################",
+                        DecimalFormatSymbols.getInstance( Locale.ENGLISH ));
+                formatter.setRoundingMode( RoundingMode.DOWN );
+                String freqStr = formatter.format(1-reversedFreq);
+
                 newKeyStr += freqStr;
 
                 if ( !prod.equals(lastProd) ) {
